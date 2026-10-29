@@ -777,7 +777,7 @@ export async function bootEditor(root) {
         h('label.field', h('span', 'User Code'), codeInput),
         h('button.btn.primary.wide', { onclick: start, disabled: !isNative }, 'Show QR code'),
         qrBox, message,
-        h('p.note', 'Free and needs no Tuya developer account: this is the same sign-in the Home Assistant integration uses. The session is stored only on this Mac.')));
+        h('p.note', 'Free and needs no Tuya developer account: this is the same sign-in the Home Assistant integration uses. The session is stored only on this computer.')));
     }
 
     // The developer-project route stays available for those who already have one.

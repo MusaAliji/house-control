@@ -1,14 +1,16 @@
 // Thin bridge to the native shell (the macOS menu bar app or the iPhone app). In a plain
 // browser every call is a no-op, so the same bundle runs under `vite dev` too.
 
-const handler = window.webkit?.messageHandlers?.house;
+const handler = window.HouseAndroid
+  ? { postMessage: (message) => window.HouseAndroid.postMessage(JSON.stringify(message)) }
+  : window.HouseDesktop || window.webkit?.messageHandlers?.house;
 
 export const isNative = Boolean(handler);
 
 // 'ios' inside the iPhone app (or with ?platform=ios in a browser, to work on that layout).
 export const platform = window.__HOUSE_BOOT__?.platform
   || new URLSearchParams(location.search).get('platform') || (handler ? 'macos' : 'web');
-export const isPhone = platform === 'ios';
+export const isPhone = platform === 'ios' || platform === 'android';
 
 export function post(type, payload = {}) {
   handler?.postMessage({ type, ...payload });

@@ -35,6 +35,22 @@ ios/build/
 core/.build/
 sync.json
 
+# Android machine configuration and generated artifacts
+android/**/.gradle/
+android/**/.kotlin/
+android/**/local.properties
+*.keystore
+*.jks
+hs_err_pid*.log
+replay_pid*.log
+*.hprof
+
+# Generated Windows desktop bundle and standalone TLS runtime
+windows/assets/web/
+windows/assets/icon.png
+windows/runtime/
+*.protected
+
 # Widgets: the Mac extension's Xcode project, Info.plists and entitlements are generated
 # from widgets/project.yml and ios/project.yml.
 widgets/HouseWidgetsMac.xcodeproj/

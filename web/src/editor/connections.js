@@ -3,9 +3,10 @@
 // connect each one, and the pickers that link a lamp or an AC to one of their devices.
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
-import { isNative, call } from '../bridge.js';
+import { isNative, platform, call } from '../bridge.js';
 import { SERVICES, linkOf } from '../config.js';
 
+const COMPUTER = platform === 'windows' ? 'PC' : 'Mac';
 const ORDER = ['smartlife', 'homeassistant', 'hue', 'homekit'];
 const LOOK = {
   smartlife: { icon: 'plug', tint: '#ff7a3d', blurb: 'Tuya, Smart Life and the many brands built on them' },
@@ -192,7 +193,7 @@ export function createConnections({ rerender, toast, usedBy, onOpen }) {
           h('li', 'Under “Long-lived access tokens” press Create token, name it “House Control”, copy it here.')),
         button,
         ha.error ? h('p.note.bad', ha.error) : null,
-        h('p.note', 'The token stays on this Mac (and goes to the iPhones you paired, over their encrypted link). Lights, switches, climate devices and temperature sensors appear here.')),
+        h('p.note', `The token stays on this ${COMPUTER} and goes to paired phones over their encrypted link. Lights, switches, climate devices and temperature sensors appear here.`)),
     ];
   }
 
@@ -248,7 +249,7 @@ export function createConnections({ rerender, toast, usedBy, onOpen }) {
         h('div.fields',
           state.pairing.error ? h('button.btn', { onclick: () => pairHue(state.pairing) }, 'Try again') : null,
           h('button.btn', { onclick: () => { stopPairing(); rerender(); } }, 'Cancel')),
-        h('p.note', 'The big button on top of the Hue Bridge lets one app in for 30 seconds. House Control keeps the key it gets, on this Mac.'))];
+        h('p.note', `The big button on top of the Hue Bridge lets one app in for 30 seconds. House Control keeps the key it gets, on this ${COMPUTER}.`))];
     }
     if (!state.found.hue && !state.scanning.hue) setTimeout(() => scan('hue'), 0);
     const found = state.found.hue || [];
@@ -273,6 +274,7 @@ export function createConnections({ rerender, toast, usedBy, onOpen }) {
 
   function homeKit() {
     const info = state.info.homekit || {};
+    if (info.supported === false) return [section('Apple Home compatibility', h('p.note', info.reason))];
     const nodes = [];
     if (info.connected) {
       if (!state.devices && !state.loading) setTimeout(() => load(), 0);

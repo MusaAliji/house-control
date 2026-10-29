@@ -6,7 +6,7 @@ import { createAgent } from './agent/tools.js';
 import { h, openMenu } from './ui/dom.js';
 import { phoneLayout, sameLayout } from './ui/layout.js';
 import { icon } from './ui/icons.js';
-import { isNative, isPhone, post, incoming, haptic } from './bridge.js';
+import { isNative, isPhone, platform, post, incoming, haptic } from './bridge.js';
 import { publishWidgets, runWidgetAction } from './widgets.js';
 
 const DEMO_PLANS = [
@@ -133,6 +133,12 @@ async function boot() {
   const show = () => { world.setRunning(true); world.intro(); };
   const hide = () => { world.setRunning(false); };
   incoming.shown = show;
+  // Android's system back first dismisses the current sheet, then leaves a room.
+  incoming.back = () => {
+    if (panel.closeSheet()) return true;
+    if (panel.room !== 'all') { panel.selectRoom('all'); return true; }
+    return false;
+  };
   incoming.hidden = () => { hide(); panel.closeSheet(); if (panel.room !== 'all') panel.selectRoom('all'); };
   incoming.setNotch = (x) => panel.setNotch(x);
   if (isPhone) {
@@ -220,6 +226,7 @@ async function boot() {
     if (isNative) {
       items.push('-',
         { label: 'Edit home…', action: () => post('openEditor') },
+        ...(platform === 'windows' ? [{ label: 'Pair Android / iPhone…', action: () => post('pairPhone') }] : []),
         { label: 'AI access…', action: () => post('openAgent') },
         { label: 'Load floor plan…', action: () => post('loadPlan') },
         { label: 'Reveal plan file', action: () => post('revealPlan') },

@@ -8,6 +8,7 @@ import { buildHouse } from './house.js';
 import { buildFurniture } from './furniture.js';
 import { LightUnit } from './lights.js';
 import { ACUnit } from './ac.js';
+import { platform } from '../bridge.js';
 
 export const STAGE_BG = '#0a0e1a';
 
@@ -109,7 +110,9 @@ export function createWorld(canvas, config, store, { onHover, onPick, background
 
   /* ---------- post-processing ---------- */
 
-  const target = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: 4 });
+  // Android WebView drivers can expose float attachments but fail resolving a
+  // multisampled HDR target. Keep HDR/bloom while avoiding that resolve path.
+  const target = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: platform === 'android' ? 0 : 4 });
   const composer = new EffectComposer(renderer, target);
   composer.addPass(new RenderPass(scene, camera));
   const bloom = new UnrealBloomPass(new THREE.Vector2(4, 4), 0.34, 0.5, 1.0);

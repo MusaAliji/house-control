@@ -1,0 +1,54 @@
+{
+  "name": "house-control-windows",
+  "version": "1.0.0",
+  "private": true,
+  "description": "House Control Windows companion with Android pairing",
+  "author": "House Control",
+  "main": "src/main.cjs",
+  "scripts": {
+    "prepare:assets": "node scripts/prepare.cjs",
+    "start": "npm run prepare:assets && electron .",
+    "test": "node --test test/*.test.cjs",
+    "dist": "npm run prepare:assets && electron-builder --win portable --x64",
+    "pack": "npm run prepare:assets && electron-builder --win --dir --x64"
+  },
+  "dependencies": {
+    "bonjour-service": "1.4.4",
+    "qrcode": "1.5.4",
+    "ws": "8.22.0"
+  },
+  "devDependencies": {
+    "electron": "44.7.2",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.housecontrol.windows",
+    "productName": "House Control",
+    "asar": false,
+    "directories": {
+      "output": "../build/windows"
+    },
+    "files": [
+      "src/**",
+      "assets/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "runtime",
+        "to": "runtime",
+        "filter": [
+          "node.exe",
+          "LICENSE"
+        ]
+      }
+    ],
+    "win": {
+      "target": "portable",
+      "signAndEditExecutable": false
+    },
+    "portable": {
+      "artifactName": "HouseControl-Windows-${version}-${arch}.exe"
+    }
+  }
+}

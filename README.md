@@ -4,6 +4,8 @@
 
 <h1 align="center">House Control</h1>
 
+Windows companion: [build, editor, and Android pairing guide](docs/windows.md). Build with `.\scripts\build-windows.ps1`; the portable app is written to `build/windows/`.
+
 <p align="center">
   Your home as a live 3D model — in the Mac's menu bar, around its notch and on your iPhone —<br>
   controlling its lights and air conditioners through Smart Life, Home Assistant, Philips Hue and Apple Home.
@@ -41,10 +43,13 @@
 - **An iPhone app that needs no Mac.** Draw the home, connect Smart Life, Home Assistant, Hue and Apple Home and
   link the devices, all on the phone. Pair a Mac later and both stay in sync, whichever one you edit.
   See [iPhone app](#iphone-app).
+- **An Android app.** The shared 3D home and controls in an Android shell, with Mac pairing,
+  Smart Life, Home Assistant and Hue. See [Android app](#android-app) for coverage and build instructions.
 - **Works without any hardware.** Until you sign in, every device is simulated, so you can try everything first.
 
-Both apps are a small native Swift shell (AppKit on the Mac, SwiftUI on the iPhone) around one
+The Apple apps are a small native Swift shell (AppKit on the Mac, SwiftUI on the iPhone) around one
 [Three.js](https://threejs.org) web UI, and share their device clients and sync as a Swift package.
+Android uses the same bundled web UI with Kotlin device clients and compatible Mac sync.
 No frameworks, no Electron, no server, no account of its own.
 
 ## Download
@@ -315,6 +320,22 @@ On the Mac they need the app running in the menu bar (it carries out what you ta
 to Home Assistant, Hue and Smart Life itself, and Apple Home devices switch when the app next opens. How it fits
 together, and how to build and try it: [docs/widgets.md](docs/widgets.md).
 
+## Android app
+
+Open `android/` in Android Studio, or build on Windows from the repository root:
+
+```powershell
+.\scripts\build-android.ps1
+```
+
+The installable debug APK is `android/app/build/outputs/apk/debug/app-debug.apk`.
+Android 8.0+ and an up-to-date Android System WebView are required. The app includes the
+same 3D interface, light and AC sheets, scenes and demo homes, plus floor-plan import,
+QR/link Mac pairing, encrypted sync, and Smart Life, Home Assistant and Hue connections.
+Apple Home links need relinking through a supported integration: Android cannot use
+the iOS HomeKit framework. Physical-device and companion-Mac checks remain necessary
+before claiming complete parity. See [Android build, feature coverage and validation](docs/android.md).
+
 ## Make it your home
 
 Right-click the icon and choose **Edit Home…**
@@ -391,6 +412,8 @@ core/     what both apps share: plan store, device platforms, Mac ⇄ iPhone syn
           and Tuya clients as a separate module (SwiftPM, with tests)
 macos/    the Mac shell: menu bar item, panel, island and editor windows (SwiftPM)
 ios/      the iPhone shell: SwiftUI, generated into an Xcode project by XcodeGen
+android/  the Android shell: Kotlin, WebView, device integrations and desktop companion sync
+windows/  the Windows companion: tray, editor, island, device services, encrypted phone sync and AI Access
 scripts/  build-app.sh, build-ios.sh and ios-sim.sh build the apps, release-mac.sh makes the .dmg,
           make-icon.swift and make-dmg-background.swift draw the icon and the disk image's window
 tools/lab pretend Home Assistant, Hue Bridge and HomeKit bridge for testing without hardware

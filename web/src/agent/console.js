@@ -4,9 +4,10 @@
 // plays the same states so the page can be worked on with `vite dev`.
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
-import { isNative, post, incoming } from '../bridge.js';
+import { isNative, platform, post, incoming } from '../bridge.js';
 import './console.css';
 
+const COMPUTER = platform === 'windows' ? 'PC' : 'Mac';
 const CLIENT_COLORS = {
   ChatGPT: '#19c37d', Claude: '#e08a5f', 'Claude Code': '#e08a5f', Cursor: '#e6e9f2', Gemini: '#6ea8ff',
   Perplexity: '#3fc1c9', Copilot: '#8ab4ff', 'House Control': '#8a94ab',
@@ -35,7 +36,7 @@ export function bootConsole(root) {
     h('div.orb-core', icon('sparkles', 30, 1.8)));
   const pill = h('div.pill');
   const primary = h('button.primary', { onclick: () => send(status.state === 'live' || status.state === 'starting' ? 'agent.stop' : 'agent.start', { reach: status.reach }) });
-  const reachSeg = segmented([['internet', 'globe', 'Over the internet'], ['local', 'laptop', 'This Mac only']],
+  const reachSeg = segmented([['internet', 'globe', 'Over the internet'], ['local', 'laptop', `This ${COMPUTER} only`]],
     (v) => send('agent.settings', { reach: v }));
   const callout = h('div.callout');
   const hero = h('header.hero', orb,
@@ -74,10 +75,10 @@ export function bootConsole(root) {
   const footer = h('footer.privacy',
     h('div.privacy-title', icon('shield', 15), 'Private by design'),
     h('ul',
-      h('li', 'Runs on this Mac. No House Control server, no account, nothing stored anywhere else.'),
+      h('li', `Runs on this ${COMPUTER}. No House Control server, no account, nothing stored anywhere else.`),
       h('li', 'The link holds a 128-bit secret. Without it every address answers “not found”.'),
       h('li', 'Stop ends it at once — the address itself stops existing. Each start makes a new one.'),
-      h('li', 'Device IDs and sign-ins never leave the Mac. Cloudflare only relays the encrypted connection.')));
+      h('li', `Device IDs and sign-ins never leave the ${COMPUTER}. Cloudflare only relays the encrypted connection.`)));
 
   const page = h('div.agent', hero, linkCard, connectCard, permsCard, activityCard, footer);
   root.replaceChildren(page);
@@ -228,7 +229,7 @@ export function bootConsole(root) {
       live: status.stopsAt ? `Live · ${left(status.stopsAt)}` : 'Live',
       error: 'Stopped', setup: 'One-time setup',
     }[s] || s;
-    pill.replaceChildren(h('i.dot'), h('span', label), ...(s === 'live' ? [h('span.pill-reach', status.reach === 'local' ? 'This Mac' : 'Internet')] : []));
+    pill.replaceChildren(h('i.dot'), h('span', label), ...(s === 'live' ? [h('span.pill-reach', status.reach === 'local' ? `This ${COMPUTER}` : 'Internet')] : []));
     primary.replaceChildren(...(s === 'live' ? [icon('stop', 15, 2.4), 'Stop AI Access'] : s === 'starting' ? [h('i.spinner'), 'Cancel'] : [icon('sparkles', 17, 2), 'Start AI Access']));
     primary.classList.toggle('stop', s === 'live' || s === 'starting');
     reachSeg.set(status.reach);
@@ -239,12 +240,12 @@ export function bootConsole(root) {
       callout.className = 'callout info';
       callout.replaceChildren(...[
         h('div.callout-title', icon('download', 15), 'Get Cloudflare’s tunnel once'),
-        h('p', 'Over the internet, your Mac is reached through Cloudflare’s free quick tunnel (', h('code.inline', 'cloudflared'), ', about 20 MB, from Cloudflare’s GitHub). No Cloudflare account is needed.'),
+        h('p', `Over the internet, your ${COMPUTER} is reached through Cloudflare’s free quick tunnel (`, h('code.inline', 'cloudflared'), ', about 20 MB, from Cloudflare’s GitHub). No Cloudflare account is needed.'),
         t.error ? h('p.err', t.error) : null,
         h('div.callout-actions',
           h('button.primary.small', { disabled: t.downloading || null, onclick: () => send('agent.install') }, t.downloading ? [h('i.spinner'), 'Downloading…'] : [icon('download', 14), 'Download']),
-          h('button.ghost', { onclick: () => send('agent.start', { reach: 'local' }) }, 'Use this Mac only')),
-        h('p.muted', 'Or in Terminal: ', h('code.inline', 'brew install cloudflared'))].filter(Boolean));
+          h('button.ghost', { onclick: () => send('agent.start', { reach: 'local' }) }, `Use this ${COMPUTER} only`)),
+        h('p.muted', platform === 'windows' ? 'Or in PowerShell: ' : 'Or in Terminal: ', h('code.inline', platform === 'windows' ? 'winget install --id Cloudflare.cloudflared' : 'brew install cloudflared'))].filter(Boolean));
     } else if (s === 'error') {
       callout.className = 'callout bad';
       callout.replaceChildren(h('div.callout-title', icon('close', 15), 'AI Access stopped'), h('p', status.error || 'Something went wrong.'));
@@ -263,7 +264,7 @@ export function bootConsole(root) {
     }
     chatActions.firstChild.hidden = local;
     linkHint.replaceChildren(...(local
-      ? ['Only apps on this Mac can open it: Claude Code, Cursor, VS Code, LM Studio, your own scripts. See ', h('b', 'Code & agents'), ' below.']
+      ? [`Only apps on this ${COMPUTER} can open it: Claude Code, Cursor, VS Code, LM Studio, your own scripts. See `, h('b', 'Code & agents'), ' below.']
       : ['Paste it into any assistant with your request — ', h('em', '“turn off every light except the bedroom”'), '.']));
     if (s === 'live') {
       try {
