@@ -39,6 +39,7 @@ class SyncClient(context: Context, readSecret: () -> String?, private val writeS
     private var qrContent: String? = null
     private var qrUnsent = false
     private var catalog: JSONArray? = null
+    private var connections: Pair<JSONObject, String>? = null
     private val retry = Runnable { search() }
 
     fun pair(value: SyncPairing) {
@@ -46,7 +47,7 @@ class SyncClient(context: Context, readSecret: () -> String?, private val writeS
         if (running) search()
     }
     fun unpair() {
-        teardown(); pairing = null; qrContent = null; qrUnsent = false; catalog = null
+        teardown(); pairing = null; qrContent = null; qrUnsent = false; catalog = null; connections = null
         writeSecret(null); set(Status.UNPAIRED)
     }
     fun start() { if (!running) { running = true; if (isPaired) search() } }
@@ -57,6 +58,14 @@ class SyncClient(context: Context, readSecret: () -> String?, private val writeS
     }
     fun showQR(content: String?): Boolean { qrContent = content; qrUnsent = true; return flushQR() }
     fun sendCatalog(devices: JSONArray) { catalog = devices; flushCatalog() }
+    /** Hands the computer this phone's connections and Smart Life User Code, now or once connected.
+     *  The computer keeps whichever side changed a platform last. */
+    fun sendConnections(shared: JSONObject, userCode: String) { connections = shared to userCode; flushConnections() }
+    private fun flushConnections() {
+        if (!isConnected) return
+        val (shared, userCode) = connections ?: return
+        send(JSONObject().put("type", "connections").put("connections", shared).put("userCode", userCode)); connections = null
+    }
     /** Hands a plan saved on this phone to the computer. False when it is not connected. */
     fun sendPlan(text: String): Boolean {
         if (!isConnected || channel == null) return false
@@ -105,7 +114,7 @@ class SyncClient(context: Context, readSecret: () -> String?, private val writeS
                     val message = runCatching { JSONObject(String(bytes, Charsets.UTF_8)) }.getOrNull() ?: continue
                     val state = SyncState.fromMessage(message) ?: continue
                     main.post { if (token == generation && running) {
-                        set(Status.CONNECTED); flushQR(); flushCatalog(); onState?.invoke(state)
+                        set(Status.CONNECTED); flushQR(); flushCatalog(); flushConnections(); onState?.invoke(state)
                     } }
                 }
             } catch (e: Exception) {

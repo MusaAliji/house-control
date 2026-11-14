@@ -109,8 +109,19 @@ class DeviceHub(context:Context) {
         services.filter{it.connected}.forEach{try{it.devices().objects().forEach{devices.put(it)}}catch(e:Exception){errors.put(it.id,e.message)}}
         return obj("devices" to devices,"errors" to errors)
     }
-    fun shareableConnections()=JSONObject().apply{homeAssistant.shareable()?.let{put("homeassistant",it)};hue.shareable()?.let{put("hue",it)}}
-    fun adoptConnections(shared:JSONObject){homeAssistant.adopt(shared.optJSONObject("homeassistant"));hue.adopt(shared.optJSONObject("hue"));refreshLive()}
+    // Home Assistant and Hue travel between this phone and the paired computer; the newer side wins.
+    private val stampPrefs=context.getSharedPreferences("connections-sync",Context.MODE_PRIVATE)
+    private val connectionSync=ConnectionSync({JSONObject(stampPrefs.getString("stamps",null)?:"{}")},{stampPrefs.edit().putString("stamps",it.toString()).apply()})
+    private val sharedPlatforms get()=listOf(ConnectionSync.Platform("homeassistant",homeAssistant::shareable,homeAssistant::adopt),ConnectionSync.Platform("hue",hue::shareable,hue::adopt))
+    fun shareableConnections()=connectionSync.shareable(sharedPlatforms)
+    /** True when a connection changed on this phone. */
+    fun adoptConnections(shared:JSONObject):Boolean{val changed=connectionSync.adopt(shared,sharedPlatforms);if(changed)refreshLive();return changed}
+    /** Connects Home Assistant (checking the address and token first) and remembers when. */
+    fun connectHomeAssistant(url:String,token:String){homeAssistant.connect(url,token);connectionSync.stamp("homeassistant")}
+    /** Pairs with a Hue Bridge; fails with code 101 until its button is pressed. */
+    fun pairHue(host:String,bridgeId:String?=null,name:String?=null){hue.pair(host,bridgeId,name);connectionSync.stamp("hue")}
+    /** Disconnects Home Assistant or Hue here, and on the computer at the next sync. */
+    fun disconnect(id:String){when(id){"homeassistant"->homeAssistant.disconnect();"hue"->hue.disconnect();else->throw IllegalArgumentException("This platform is unavailable on Android.")};connectionSync.stamp(id);refreshLive()}
     fun beginLogin(userCode:String)=smartLife.beginLogin(userCode)
     fun finishLogin(token:String,userCode:String)=smartLife.finishLogin(token,userCode)
     fun signOut()=smartLife.signOut()

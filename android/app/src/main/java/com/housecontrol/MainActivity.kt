@@ -98,7 +98,14 @@ class MainActivity : Activity() {
         sync.onState = { state ->
             suggestedUserCode = state.userCode
             prefs.edit().putLong("lastSync", System.currentTimeMillis()).apply()
-            background({ state.connections?.let(hub::adoptConnections) }) { refreshSettingsIfOpen() }
+            // The computer's connections where newer; then whatever this phone changed since goes back.
+            background({
+                val changed = state.connections?.let(hub::adoptConnections) ?: false
+                Triple(changed, hub.shareableConnections(), hub.info().optString("userCode"))
+            }, report = false) { (changed, shared, userCode) ->
+                sync.sendConnections(shared, userCode)
+                if (changed) reloadHome() else refreshSettingsIfOpen()
+            }
             reconcilePlan(state)
         }
         sync.onStatus = { refreshSettingsIfOpen() }
@@ -382,10 +389,10 @@ class MainActivity : Activity() {
             "devices.all" -> work { hub.allDevices() }
             "services.discover" -> reply(JSONObject().put("found", org.json.JSONArray())) // no LAN discovery on Android yet
             "homeassistant.connect" -> background({
-                hub.homeAssistant.connect(message.optString("url").trim(), message.optString("token").trim()); hub.servicesInfo()
+                hub.connectHomeAssistant(message.optString("url").trim(), message.optString("token").trim()); hub.servicesInfo()
             }, onError = ::fail) { reply(it); reloadHome() }
             "hue.pair" -> background({
-                hub.hue.pair(message.optString("host"), message.optString("bridgeId").ifBlank { null }, message.optString("name").ifBlank { null })
+                hub.pairHue(message.optString("host"), message.optString("bridgeId").ifBlank { null }, message.optString("name").ifBlank { null })
                 hub.servicesInfo()
             }, onError = { error ->
                 // The bridge's button not pressed yet: the editor asks again in a moment.
@@ -393,8 +400,7 @@ class MainActivity : Activity() {
             }) { reply(it); reloadHome() }
             "service.disconnect" -> background({
                 when (message.optString("service")) {
-                    "homeassistant" -> hub.homeAssistant.disconnect()
-                    "hue" -> hub.hue.disconnect()
+                    "homeassistant", "hue" -> hub.disconnect(message.optString("service"))
                     "smartlife" -> hub.signOut()
                     "tuya" -> hub.saveTuya("", "", "eu")
                     else -> throw IllegalArgumentException("This platform is unavailable on Android.")
@@ -758,8 +764,8 @@ class MainActivity : Activity() {
         val url = field(body, "http://homeassistant.local:8123")
         val token = field(body, "Long-lived access token").apply { inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD }
         val dialog = dialog("Home Assistant", body)
-        button(body, "Connect") { background({ hub.homeAssistant.connect(url.text.toString().trim(), token.text.toString().trim()) }) { dialog.dismiss(); toast("Home Assistant connected"); reloadHome() } }
-        button(body, "Disconnect") { background({ hub.homeAssistant.disconnect() }) { dialog.dismiss(); reloadHome(); toast("Home Assistant disconnected") } }
+        button(body, "Connect") { background({ hub.connectHomeAssistant(url.text.toString().trim(), token.text.toString().trim()) }) { dialog.dismiss(); toast("Home Assistant connected"); reloadHome() } }
+        button(body, "Disconnect") { background({ hub.disconnect("homeassistant") }) { dialog.dismiss(); reloadHome(); toast("Home Assistant disconnected") } }
         dialog.show()
     }
 
@@ -768,8 +774,8 @@ class MainActivity : Activity() {
         label(body, "Enter the Hue Bridge address, press the physical link button on the bridge, then tap Pair.")
         val host = field(body, "192.168.1.10")
         val dialog = dialog("Philips Hue", body)
-        button(body, "Pair bridge") { background({ hub.hue.pair(host.text.toString().trim()) }) { dialog.dismiss(); toast("Hue connected"); reloadHome() } }
-        button(body, "Disconnect") { background({ hub.hue.disconnect() }) { dialog.dismiss(); reloadHome(); toast("Hue disconnected") } }
+        button(body, "Pair bridge") { background({ hub.pairHue(host.text.toString().trim()) }) { dialog.dismiss(); toast("Hue connected"); reloadHome() } }
+        button(body, "Disconnect") { background({ hub.disconnect("hue") }) { dialog.dismiss(); reloadHome(); toast("Hue disconnected") } }
         dialog.show()
     }
 

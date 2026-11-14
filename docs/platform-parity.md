@@ -69,6 +69,7 @@ everywhere and are listed once at the top.
 | 10 | Earlier homes | Yes | ✅ | |
 | 11 | Pair with Mac or PC (camera QR + paste link) | Yes | ✅ | |
 | 12 | Sync now / Unpair / last-synced / status text | Yes | ✅ | |
+| 12b | Home Assistant / Hue connections both ways, newer side wins | `ConnectionSync`, same stamps as Mac and Windows | ✅ | Before 2026-11-14 Android only took the computer's, dropping its own. |
 | 13 | **Sync conflict prompt** ("which plan to keep") | Same rules as iOS (`syncedPlanRevision`, "Which home do you keep?") | ✅ | Not yet run against a real computer. |
 | 14 | Send phone-edited plan to computer | `SyncClient.sendPlan`; Windows now accepts it too | ✅ | Windows needed a `plan` handler (tested). |
 | 15 | Home Assistant: auto-find on Wi-Fi + token | Manual URL + token | 🟡 | No discovery. |
@@ -93,7 +94,7 @@ everywhere and are listed once at the top.
 
 1. ~~Android: open the shared editor~~ and ~~the sync conflict prompt~~: done (2026-11-14).
 2. ~~Windows: accept the phone's `connections` message~~: done (2026-11-14), with the Mac's timestamps.
-   Android still neither sends its connections nor keeps timestamps; it replaces its own with the computer's.
+   ~~Android: send its connections and keep timestamps~~: done (2026-11-14).
 3. **Windows: Settings window and About** (rows 4 to 6).
 4. Android: Home Assistant and Hue discovery, Tuya developer UI.
 5. Android widgets and shortcuts; the ARCore scan last.
