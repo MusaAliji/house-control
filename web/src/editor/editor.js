@@ -8,7 +8,7 @@ import { createWorld } from '../three/world.js';
 import { FURNITURE_TYPES, footprint } from '../three/furniture.js';
 import { h, clamp } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
-import { isNative, isPhone, call, post, haptic, incoming } from '../bridge.js';
+import { isNative, isPhone, platform, call, post, haptic, incoming } from '../bridge.js';
 import { createConnections } from './connections.js';
 import { createUnderlay } from './underlay.js';
 
@@ -90,7 +90,10 @@ export async function bootEditor(root) {
   const sidebar = h('aside.side');
   const plan = sv('svg', { class: 'plan', tabindex: 0 });
   // A picture of a floor plan to trace over: kept on this device, not part of the home.
-  const underlay = createUnderlay({ plan, planPoint: (ev) => planPoint(ev), view: () => box(), redraw: () => renderPlan(), toast: (t, bad) => toast(t, bad) });
+  // Only on Windows and Android for now (and in a browser): the Mac and iPhone apps do not have it.
+  const underlay = ['macos', 'ios'].includes(platform)
+    ? { button: null, card: null, nodes: () => [], outline: () => null, sync() {} }
+    : createUnderlay({ plan, planPoint: (ev) => planPoint(ev), view: () => box(), redraw: () => renderPlan(), toast: (t, bad) => toast(t, bad) });
   const inspector = h('div.inspector');
   const previewHost = h('div.preview');
   const previewToggle = h('button.chip', { onclick: () => { previewLights = !previewLights; schedulePreview(0); } });
@@ -1637,7 +1640,7 @@ export async function bootEditor(root) {
     const redoBtn = h('button.p-icon', { 'aria-label': 'Redo', onclick: () => { stepHistory(redo, undo); haptic('light'); } }, icon('redo', 19, 2.1));
     const doneBtn = h('button.p-save', { onclick: () => (dirty ? save() : close()) });
     const issue = h('div.p-issue');
-    underlay.button.classList.add('p-float', 'p-trace');
+    underlay.button?.classList.add('p-float', 'p-trace');
     const fitBtn = h('button.p-float', { 'aria-label': 'Show the whole floor', onclick: () => { reveal(); haptic('light'); } }, icon('fit', 18, 2));
     const tool = (name, label, onclick) => h('button.p-tool', { onclick }, icon(name, 22, 1.9), h('span', label));
     const view3d = tool('box', '3D', () => setShow3D(!ui.show3D));
@@ -1668,7 +1671,7 @@ export async function bootEditor(root) {
         h('button.btn.wide', { onclick: closeModals }, 'Keep editing')));
 
     sheet.append(grip, inspector);
-    canvas.append(plan, levelBar, emptyCard, h('div.p-preview', previewHost, previewToggle), issue, fitBtn, underlay.button, underlay.card, hint);
+    canvas.append(plan, levelBar, emptyCard, h('div.p-preview', previewHost, previewToggle), issue, fitBtn, ...(underlay.button ? [underlay.button, underlay.card] : []), hint);
     const shell = h('div.editor.phone',
       h('header.p-bar', h('button.p-icon', { 'aria-label': 'Close', onclick: requestClose }, icon('close', 20, 2.2)),
         nameInput, undoBtn, redoBtn, doneBtn),

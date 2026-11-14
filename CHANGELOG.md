@@ -13,7 +13,7 @@ What changed in each release of House Control. The Mac app is on
   place, turn it, and make it more or less see-through while you draw the rooms over it.
 - The picture belongs to the device it was added on, one for each floor of each home. It is not part of the home, so it
   does not sync, make the plan file bigger or show in 3D.
-- Works wherever the editor does: Mac, iPhone, Windows and Android.
+- On Windows and Android. The Mac and iPhone apps do not have it.
 
 ## 1.5.2 — 2026-11-13
 

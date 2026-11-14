@@ -10,7 +10,7 @@ private final class FirstMouseWebView: WKWebView {
 
 /// A WKWebView showing the web UI in one of its modes ("panel", "editor", "island" or "agent"),
 /// plus the JSON message bridge in both directions.
-final class WebHost: NSObject, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
+final class WebHost: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
     let webView: WKWebView
     let mode: String
     var onMessage: (([String: Any]) -> Void)?
@@ -37,7 +37,6 @@ final class WebHost: NSObject, WKScriptMessageHandler, WKNavigationDelegate, WKU
         super.init()
         config.userContentController.add(self, name: "house")
         webView.navigationDelegate = self
-        webView.uiDelegate = self
         if transparent {
             webView.setValue(false, forKey: "drawsBackground")
             if #available(macOS 12.0, *) { webView.underPageBackgroundColor = .clear }
@@ -137,19 +136,5 @@ final class WebHost: NSObject, WKScriptMessageHandler, WKNavigationDelegate, WKU
             return
         }
         decisionHandler(.allow)
-    }
-
-    /// An <input type="file"> in the page (the editor's "Trace a picture") opens the standard open panel.
-    func webView(_ webView: WKWebView, runOpenPanelWith parameters: WKOpenPanelParameters,
-                 initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping ([URL]?) -> Void) {
-        let panel = NSOpenPanel()
-        panel.allowsMultipleSelection = parameters.allowsMultipleSelection
-        panel.canChooseDirectories = false
-        panel.allowedContentTypes = [.image]
-        if let window = webView.window {
-            panel.beginSheetModal(for: window) { completionHandler($0 == .OK ? panel.urls : nil) }
-        } else {
-            completionHandler(panel.runModal() == .OK ? panel.urls : nil)
-        }
     }
 }
