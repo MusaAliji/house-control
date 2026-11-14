@@ -3,6 +3,18 @@
 What changed in each release of House Control. The Mac app is on
 [Releases](https://github.com/0xProbabillity/house-control/releases); the iPhone app is on the App Store and TestFlight.
 
+## Unreleased
+
+### Trace a floor plan picture
+
+- **Draw your rooms over a picture of your floor plan.** In the editor, the picture button beside the zoom buttons
+  (the "Trace a picture" card on the phone) puts a photo or scan of a floor plan under the plan. Tap two ends of
+  something you know the length of, type its real length, and the picture takes the right size; then **Move** it into
+  place, turn it, and make it more or less see-through while you draw the rooms over it.
+- The picture belongs to the device it was added on, one for each floor of each home. It is not part of the home, so it
+  does not sync, make the plan file bigger or show in 3D.
+- Works wherever the editor does: Mac, iPhone, Windows and Android.
+
 ## 1.5.2 — 2026-11-13
 
 ### Fixes from TestFlight feedback

@@ -565,3 +565,35 @@ html.ios.mode-editor body { background: var(--bg); }
 @media (prefers-reduced-motion: reduce) {
   .p-sheet, .p-modal, .editor.phone .canvas, .p-scrim { transition-duration: 1ms; }
 }
+
+/* ---------- tracing a picture of a floor plan ---------- */
+.zoom button.on { background: rgba(70, 130, 255, 0.3); color: #fff; }
+.editor.phone .p-float.p-trace { top: calc(max(12px, calc(var(--corner-top, 0px) - var(--bar-h) + 8px)) + 48px); }
+.editor.phone .p-float.p-trace.on { color: #fff; background: rgba(70, 130, 255, 0.5); }
+.p-underlay { image-rendering: auto; }
+.p-trace-cross { stroke: #ffd24a; stroke-width: 2.5; vector-effect: non-scaling-stroke; stroke-linecap: round; }
+.p-trace-line { stroke: #ffd24a; stroke-width: 1.5; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; }
+.plan.trace-move { cursor: grab; touch-action: none; }
+.plan.trace-scale { cursor: crosshair; touch-action: none; }
+.trace-card {
+  position: absolute; top: 12px; right: 12px; z-index: 5; width: min(310px, calc(100% - 24px));
+  display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 16px;
+  background: rgba(16, 21, 36, 0.94); border: 1px solid var(--line); box-shadow: 0 16px 40px -14px rgba(0, 0, 0, 0.7);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+.trace-card[hidden] { display: none; }
+.editor.phone .trace-card { top: auto; bottom: 84px; right: 12px; left: 12px; width: auto; max-width: 360px; margin: 0 auto; padding: 12px; gap: 8px; }
+.editor.phone .trace-card .btn { height: 34px; padding: 0 10px; font-size: 13px; border-radius: 10px; }
+.editor.phone .trace-row input[type='number'] { height: 34px; font-size: 16px; }
+.trace-head { display: flex; align-items: center; justify-content: space-between; font-size: 13.5px; }
+.trace-x { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; color: var(--muted); }
+.trace-x:hover { background: var(--glass-hi); color: var(--text); }
+.trace-card .note { margin: 0; font-size: 12px; line-height: 1.4; color: var(--muted); }
+.trace-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.trace-row .btn { height: 30px; padding: 0 10px; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; }
+.trace-row input[type='number'] { flex: 1; min-width: 0; height: 30px; }
+.trace-label { font-size: 12px; color: var(--muted); }
+.trace-field { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
+.trace-field input { flex: 1; }
+/* With a picture under the plan the rooms let it show through, so it can be traced. */
+.plan.tracing .p-room > rect { fill-opacity: 0.38; }

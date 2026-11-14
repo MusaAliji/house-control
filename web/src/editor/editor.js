@@ -10,6 +10,7 @@ import { h, clamp } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { isNative, isPhone, call, post, haptic, incoming } from '../bridge.js';
 import { createConnections } from './connections.js';
+import { createUnderlay } from './underlay.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const sv = (tag, attrs = {}, ...kids) => {
@@ -88,6 +89,8 @@ export async function bootEditor(root) {
 
   const sidebar = h('aside.side');
   const plan = sv('svg', { class: 'plan', tabindex: 0 });
+  // A picture of a floor plan to trace over: kept on this device, not part of the home.
+  const underlay = createUnderlay({ plan, planPoint: (ev) => planPoint(ev), view: () => box(), redraw: () => renderPlan(), toast: (t, bad) => toast(t, bad) });
   const inspector = h('div.inspector');
   const previewHost = h('div.preview');
   const previewToggle = h('button.chip', { onclick: () => { previewLights = !previewLights; schedulePreview(0); } });
@@ -103,7 +106,7 @@ export async function bootEditor(root) {
         h('button.btn', { onclick: exportPlan }, 'Export…'),
         saveBtn)),
     sidebar,
-    h('main.canvas', plan, levelBar, emptyCard, addBar(), zoomBar()),
+    h('main.canvas', plan, levelBar, emptyCard, addBar(), zoomBar(), underlay.card),
     h('aside.right', h('div.preview-wrap', previewHost, previewToggle), inspector),
     h('footer.foot', status),
     toastEl));
@@ -344,7 +347,7 @@ export async function bootEditor(root) {
   /* ---------- view: what part of the plan is on show ---------- */
 
   function bounds() {
-    const b = outline(levelRooms()) || outline(below() ? levelRooms(below().id) : []) || outline(doc.rooms);
+    const b = outline(levelRooms()) || underlay.outline() || outline(below() ? levelRooms(below().id) : []) || outline(doc.rooms);
     return b || { minX: 0, minZ: 0, maxX: 6, maxZ: 4 };
   }
 
@@ -403,7 +406,8 @@ export async function bootEditor(root) {
     return h('div.zoom',
       h('button', { title: 'Zoom in (⌘+ or pinch)', 'aria-label': 'Zoom in', onclick: () => zoomBy(1.35) }, icon('zoomIn', 16, 2)),
       h('button', { title: 'Zoom out', 'aria-label': 'Zoom out', onclick: () => zoomBy(1 / 1.35) }, icon('zoomOut', 16, 2)),
-      h('button', { title: 'Show the whole floor (⌘0)', 'aria-label': 'Show the whole floor', onclick: reveal }, icon('fit', 16, 2)));
+      h('button', { title: 'Show the whole floor (⌘0)', 'aria-label': 'Show the whole floor', onclick: reveal }, icon('fit', 16, 2)),
+      underlay.button);
   }
 
   // What can be added, for the bar under the plan (Mac) and the Add sheet (phone).
@@ -734,6 +738,7 @@ export async function bootEditor(root) {
   function renderPlan() {
     applyView();
     renderLevels();
+    underlay.sync(`${doc.name || 'home'}|${level}`);
     // Fingers are bigger than a mouse pointer: on a phone small things get a wider target.
     const big = isPhone;
     const kids = [
@@ -741,6 +746,7 @@ export async function bootEditor(root) {
         sv('path', { d: 'M1 0H0V1', fill: 'none', stroke: 'rgba(255,255,255,0.07)', 'stroke-width': 0.015 }),
         sv('path', { d: 'M0.5 0V1M0 0.5H1', fill: 'none', stroke: 'rgba(255,255,255,0.03)', 'stroke-width': 0.01 }))),
       sv('rect', { x: -500, y: -500, width: 1000, height: 1000, fill: 'url(#grid)', 'data-kind': 'none' }),
+      ...underlay.nodes(),
     ];
 
     // The floor below, faintly, to line the walls (and the stairs coming up) up with.
@@ -1631,6 +1637,7 @@ export async function bootEditor(root) {
     const redoBtn = h('button.p-icon', { 'aria-label': 'Redo', onclick: () => { stepHistory(redo, undo); haptic('light'); } }, icon('redo', 19, 2.1));
     const doneBtn = h('button.p-save', { onclick: () => (dirty ? save() : close()) });
     const issue = h('div.p-issue');
+    underlay.button.classList.add('p-float', 'p-trace');
     const fitBtn = h('button.p-float', { 'aria-label': 'Show the whole floor', onclick: () => { reveal(); haptic('light'); } }, icon('fit', 18, 2));
     const tool = (name, label, onclick) => h('button.p-tool', { onclick }, icon(name, 22, 1.9), h('span', label));
     const view3d = tool('box', '3D', () => setShow3D(!ui.show3D));
@@ -1661,7 +1668,7 @@ export async function bootEditor(root) {
         h('button.btn.wide', { onclick: closeModals }, 'Keep editing')));
 
     sheet.append(grip, inspector);
-    canvas.append(plan, levelBar, emptyCard, h('div.p-preview', previewHost, previewToggle), issue, fitBtn, hint);
+    canvas.append(plan, levelBar, emptyCard, h('div.p-preview', previewHost, previewToggle), issue, fitBtn, underlay.button, underlay.card, hint);
     const shell = h('div.editor.phone',
       h('header.p-bar', h('button.p-icon', { 'aria-label': 'Close', onclick: requestClose }, icon('close', 20, 2.2)),
         nameInput, undoBtn, redoBtn, doneBtn),

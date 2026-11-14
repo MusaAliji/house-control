@@ -58,6 +58,7 @@ class MainActivity : Activity() {
     private val origin = "https://appassets.androidplatform.net"
     private val indexPath = "/assets/dist/index.html"
     @Volatile private var boot = "{}"
+    private var pendingChooser: ValueCallback<Array<Uri>>? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -97,6 +98,15 @@ class MainActivity : Activity() {
             settings.setSupportMultipleWindows(false)
             addJavascriptInterface(Bridge(), "HouseAndroid")
             webChromeClient = object : WebChromeClient() {
+                // The editor's "Trace a picture" asks for an image through an <input type="file">.
+                override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
+                    pendingChooser?.onReceiveValue(null)
+                    pendingChooser = callback
+                    return try {
+                        startActivityForResult(params.createIntent(), PICK_PICTURE)
+                        true
+                    } catch (_: Exception) { pendingChooser = null; false }
+                }
                 override fun onConsoleMessage(message: ConsoleMessage): Boolean {
                     if (BuildConfig.DEBUG) android.util.Log.d("HouseControlWeb", message.message())
                     return true
@@ -470,6 +480,11 @@ class MainActivity : Activity() {
 
     @Deprecated("The Activity result boundary is shared with the ZXing scanner")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == PICK_PICTURE) {
+            pendingChooser?.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data))
+            pendingChooser = null
+            return
+        }
         val scan = IntentIntegrator.parseActivityResult(requestCode, resultCode, data)
         if (scan != null) { scan.contents?.let { acceptPairing(it) }; return }
         super.onActivityResult(requestCode, resultCode, data)
@@ -517,5 +532,5 @@ class MainActivity : Activity() {
         if (uri.scheme !in listOf("https", "http")) return
         runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }.onFailure { toast("No browser is available") }
     }
-    companion object { private const val IMPORT_PLAN = 701 }
+    companion object { private const val IMPORT_PLAN = 701; private const val PICK_PICTURE = 702 }
 }
