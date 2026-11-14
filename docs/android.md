@@ -57,6 +57,9 @@ Mac and physical accessories must be used to validate their respective paths.
 | Haptics | Android vibration bridge | Physical Android phone |
 | Apple Home / HomeKit | Android has no equivalent Apple HomeKit framework; use Home Assistant or another supported integration for compatible devices | Direct Apple Home pairing/control is unavailable |
 
+The iPhone's LiDAR home scan has no direct Android equivalent. The plan for an ARCore-based one, and the fact that Android
+has no editor yet, are in [android-scan-plan.md](android-scan-plan.md).
+
 Mac-only features such as the menu bar, notch island, desktop editor workflow,
 AI/MCP server and release DMG are outside the iPhone-to-Android scope.
 
