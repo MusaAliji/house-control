@@ -1734,6 +1734,11 @@ export async function bootEditor(root) {
       scrim.classList.remove('open');
     }
     scrim.addEventListener('click', closeModals);
+    // Android's back button: a sheet closes first, then the editor (asking about unsaved changes).
+    incoming.back = () => {
+      if (scrim.classList.contains('open')) closeModals(); else requestClose();
+      return true;
+    };
 
     function requestClose() {
       if (dirty) openModal(confirmSheet); else close();

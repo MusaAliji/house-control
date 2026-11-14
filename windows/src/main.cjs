@@ -96,6 +96,17 @@ function earlierHomesMenu() {
     { type: 'separator' }, { label: 'Show in Explorer', click: () => shell.openPath(plans.earlierDirectory) },
   ] }];
 }
+/** A plan saved on a paired phone. The first one becomes the home; later ones replace it
+ *  (a PC that switched to a demo plan stays there, like the Mac). */
+function receivedPlan(text, device) {
+  const first = !plans.custom();
+  try { plans.save(text, { select: first || plans.activePlan === 'custom' }); } catch (error) { log(error); return; }
+  refreshLinks();
+  for (const [mode, win] of windows) if (['panel', 'island'].includes(mode)) load(win);
+  broadcast(); buildTray();
+  // An open editor takes the new plan unless it holds unsaved changes of its own.
+  notify('editor', 'planArrived', plans.custom(), device);
+}
 async function savePlan(config) { plans.save(config); reload(); return { ok: true, path: plans.file }; }
 async function importDialog(owner) {
   const result = await dialog.showOpenDialog(owner, { title: 'Choose a floor plan', filters: [{ name: 'House Control floor plan', extensions: ['json'] }], properties: ['openFile'] });
@@ -267,6 +278,7 @@ else {
       nodePath: app.isPackaged ? path.join(process.resourcesPath, 'runtime/node.exe') : path.join(assetRoot, '../runtime/node.exe'),
       snapshot, onPeersChanged: () => { pairingStatus().catch(log); buildTray(); },
       onShowQR: (content, device) => showLoginCode(content, device).catch(log),
+      onPlan: (text, device) => receivedPlan(text, device),
       onError: error => { syncError = error.message; pairingStatus().catch(log); log(error); },
     });
     agent = createAgent({

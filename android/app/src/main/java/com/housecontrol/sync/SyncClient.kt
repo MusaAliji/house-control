@@ -57,6 +57,11 @@ class SyncClient(context: Context, readSecret: () -> String?, private val writeS
     }
     fun showQR(content: String?): Boolean { qrContent = content; qrUnsent = true; return flushQR() }
     fun sendCatalog(devices: JSONArray) { catalog = devices; flushCatalog() }
+    /** Hands a plan saved on this phone to the computer. False when it is not connected. */
+    fun sendPlan(text: String): Boolean {
+        if (!isConnected || channel == null) return false
+        send(JSONObject().put("type", "plan").put("plan", text)); return true
+    }
     private fun set(value: Status, detail: String? = null) {
         if (status == value && error == detail) return
         status = value; error = detail; onStatus?.invoke()

@@ -96,6 +96,28 @@ test('QR and catalog require hello, retain QR when phone disconnects, and suppor
   assert.equal(shown.length, 2); assert.deepEqual(server.connectedDevices, []);
 });
 
+test('a plan from the phone needs hello and a valid plan, and is not echoed back', { timeout: 10000 }, async t => {
+  let current = { macName: 'PC', revision: 'old', plan: '{"rooms":[{"id":"a"}]}' };
+  const server = await serverFor(t, () => current);
+  const socket = connect(server); t.after(() => socket.destroy());
+  const next = inbox(socket); await once(socket, 'secureConnect');
+  const received = [];
+  server.onPlan = (...args) => received.push(args);
+  const phonePlan = '{"name":"Phone home","rooms":[{"id":"kitchen"}]}';
+  socket.write(encodeFrame({ type: 'plan', plan: phonePlan })); // before hello: ignored
+  socket.write(encodeFrame({ type: 'hello', device: 'Pixel', rev: '' }));
+  assert.equal((await next()).plan, current.plan);
+  socket.write(encodeFrame({ type: 'plan', plan: '{"rooms":[]}' })); // not a floor plan: ignored
+  const event = once(server, 'plan');
+  socket.write(encodeFrame({ type: 'plan', plan: phonePlan })); await event;
+  assert.deepEqual(received, [[phonePlan, 'Pixel']]);
+  // The PC stores it; its broadcast carries the new revision but not the plan the phone already has.
+  current = { macName: 'PC', revision: planRevision(Buffer.from(phonePlan)), plan: phonePlan };
+  server.broadcast();
+  const state = await next();
+  assert.equal(state.rev, current.revision); assert.equal(state.plan, undefined);
+});
+
 test('wrong PSK fails before snapshot or application messages', { timeout: 10000 }, async t => {
   let served = false;
   const server = await serverFor(t, () => { served = true; return { revision: '' }; });

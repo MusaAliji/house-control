@@ -15,6 +15,16 @@ What changed in each release of House Control. The Mac app is on
   does not sync, make the plan file bigger or show in 3D.
 - On Windows and Android. The Mac and iPhone apps do not have it.
 
+### The floor plan editor on Android
+
+- **Android has the editor.** **Settings → Edit floor plan** opens the same editor as the iPhone: rooms, floors, lamps,
+  ACs, furniture, scenes, real-device links, Import and Export, and Trace a picture. The back button closes a sheet,
+  then the editor, asking first about unsaved changes.
+- **New home** on Android (one room, or the Studio, Apartment or House layout), also offered on the welcome screen.
+- **Plans go both ways between Android and the computer.** A plan saved on the phone reaches the paired Mac or PC. If both
+  changed it while apart, the phone asks which one to keep, as the iPhone does.
+- **Windows** now takes a plan saved on a paired phone (it ignored it before).
+
 ## 1.5.2 — 2026-11-13
 
 ### Fixes from TestFlight feedback

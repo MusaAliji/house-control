@@ -331,7 +331,7 @@ Open `android/` in Android Studio, or build on Windows from the repository root:
 
 The installable debug APK is `android/app/build/outputs/apk/debug/app-debug.apk`.
 Android 8.0+ and an up-to-date Android System WebView are required. The app includes the
-same 3D interface, light and AC sheets, scenes and demo homes, plus floor-plan import,
+same 3D interface, light and AC sheets, scenes and demo homes, plus the floor plan editor, New home, floor-plan import,
 QR/link Mac pairing, encrypted sync, and Smart Life, Home Assistant and Hue connections.
 Apple Home links need relinking through a supported integration: Android cannot use
 the iOS HomeKit framework. Physical-device and companion-Mac checks remain necessary

@@ -48,6 +48,8 @@ Mac and physical accessories must be used to validate their respective paths.
 | 3D home, device sheets, brightness, colour, AC controls and scenes | Same bundled web UI and native message bridge | Phone/tablet touch, graphics and WebView compatibility |
 | Apartment and Studio demo homes | Bundled plans with simulated devices | Offline launch and scene/control interactions |
 | Import/select/remove custom floor plan | Android document picker and private app storage | Import a real exported plan and restart app |
+| Floor plan editor, New home, export, Trace a picture | Shared web editor in a second WebView | Save, import and export on a device; picture tracing |
+| Two-way plan sync with conflict prompt | `syncedPlanRevision` rules from iOS, `plan` message to the computer | Edit on both sides while apart, then reconnect |
 | Mac QR pairing and pasted pairing payload | Camera QR scanner and text entry | Pair with a running Mac on the same LAN |
 | Foreground Mac synchronization, plan/device updates and QR forwarding | DNS-SD discovery and TLS-PSK companion protocol | End-to-end pairing, reconnection and credential/plan updates |
 | Smart Life QR account login and sign-out | Kotlin cloud adapter and QR display/share | Real account login, token refresh and commands |
@@ -57,8 +59,11 @@ Mac and physical accessories must be used to validate their respective paths.
 | Haptics | Android vibration bridge | Physical Android phone |
 | Apple Home / HomeKit | Android has no equivalent Apple HomeKit framework; use Home Assistant or another supported integration for compatible devices | Direct Apple Home pairing/control is unavailable |
 
-The iPhone's LiDAR home scan has no direct Android equivalent. The plan for an ARCore-based one, and the fact that Android
-has no editor yet, are in [android-scan-plan.md](android-scan-plan.md).
+The floor plan editor is the iPhone's, in a second WebView: **Settings → Edit floor plan** (and **New home…**). Plans
+saved on the phone go to the paired computer; when both changed, the phone asks which to keep.
+
+The iPhone's LiDAR home scan has no direct Android equivalent. The plan for an ARCore-based one is in
+[android-scan-plan.md](android-scan-plan.md).
 
 Mac-only features such as the menu bar, notch island, desktop editor workflow,
 AI/MCP server and release DMG are outside the iPhone-to-Android scope.

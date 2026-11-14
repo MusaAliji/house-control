@@ -21,6 +21,7 @@ process.on('message', async message => {
         onPeersChanged: () => send({ event: 'state', state: state() }),
         onShowQR: (content, device) => send({ event: 'showQR', content, device }),
         onCatalog: (devices, device) => send({ event: 'catalog', devices, device }),
+        onPlan: (plan, device) => send({ event: 'plan', plan, device }),
         onError: error => send({ event: 'failure', error: String(error.message || error) }),
       });
       await server.start();

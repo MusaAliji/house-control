@@ -18,8 +18,8 @@ and in what order to build it.
    only as an optional later accuracy aid.
 3. **Port `ScanLayout` to JavaScript in `web/`**, tested against golden vectors from the Swift tests, so
    Android, Windows and the browser share one implementation.
-4. **Prerequisite:** Android has no editor today (see section 4). The review step needs one, or a native
-   review screen.
+4. **Prerequisite (done 2026-11-14):** Android now hosts the shared editor (see section 4), so the review step can
+   end in **Save and fine-tune** as on the iPhone.
 5. Windows has no depth sensor, so it gets no capture. It benefits from the JS layout (import a scan file)
    and from receiving scans from a phone over the existing pairing sync.
 
@@ -90,6 +90,9 @@ to `core/Tests/Fixtures/` (or similar) and commit both JSON files. The JS port t
 JS port can still assert the Swift test's own expectations (copy the numbers from `RoomScanTests.swift`).
 
 ## 4. Android prerequisite: there is no editor on Android
+
+> **Resolved 2026-11-14:** option A below was built. `MainActivity.kt` opens `?mode=editor` in a second WebView and
+> answers `savePlan`, `importPlan`, `exportPlan` and the service calls. The text below is kept as the original finding.
 
 Verified in `android/app/src/main/java/com/housecontrol/MainActivity.kt`: the WebView always loads `?mode=panel`, and the
 bridge handles only `ready`, `command`, `haptic`, `openSettings` and `selectPlan`. There is no `openEditor`,

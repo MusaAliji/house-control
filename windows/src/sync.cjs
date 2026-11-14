@@ -3,6 +3,7 @@
 const tls = require('node:tls');
 const { randomUUID, randomBytes, createHmac, createHash } = require('node:crypto');
 const { EventEmitter } = require('node:events');
+const { validatePlan } = require('./store.cjs');
 
 const MAX_FRAME = 8 * 1024 * 1024;
 const CIPHER = 'PSK-AES128-GCM-SHA256';
@@ -98,6 +99,7 @@ class SyncServer extends EventEmitter {
     this.onPeersChanged = options.onPeersChanged;
     this.onShowQR = options.onShowQR;
     this.onCatalog = options.onCatalog;
+    this.onPlan = options.onPlan;
     this.onError = options.onError;
     this.listener = null; this.peers = new Map(); this.sockets = new Set();
     this.isAdvertised = false; this.bonjour = null; this.service = null; this.advertisingTimer = null;
@@ -227,6 +229,16 @@ class SyncServer extends EventEmitter {
           this.onCatalog?.(message.devices, peer.name); this.emit('catalog', message.devices, peer.name);
         }
         break;
+      case 'plan': {
+        // A plan saved on the phone. Same rules as the Mac's SyncServer.
+        if (!peer.name || typeof message.plan !== 'string') break;
+        const bytes = Buffer.from(message.plan, 'utf8');
+        try { validatePlan(bytes); } catch { break; }
+        // The phone holds this revision now: the broadcast that follows need not echo it.
+        peer.revision = planRevision(bytes);
+        this.onPlan?.(message.plan, peer.name); this.emit('plan', message.plan, peer.name);
+        break;
+      }
     }
   }
   _send(peer, snapshot) {

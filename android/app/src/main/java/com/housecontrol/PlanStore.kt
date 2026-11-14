@@ -7,7 +7,12 @@ import java.io.File
 import java.security.MessageDigest
 
 class PlanStore(context: Context) {
-    companion object { val BUNDLED = listOf("home", "studio", "house") }
+    companion object {
+        val BUNDLED = listOf("home", "studio", "house")
+        /** The first 8 bytes of SHA-256, as 16 hex characters: the sync protocol's plan revision. */
+        fun revision(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes).take(8)
+            .joinToString("") { "%02x".format(it.toInt() and 255) }
+    }
 
     private val prefs = context.getSharedPreferences("home", Context.MODE_PRIVATE)
     private val file = AtomicFile(File(context.filesDir, "plan.json"))
@@ -16,8 +21,9 @@ class PlanStore(context: Context) {
         private set
     val custom: JSONObject? get() = if (file.baseFile.exists()) JSONObject(String(file.readFully(), Charsets.UTF_8)) else null
     val hasCustom: Boolean get() = file.baseFile.exists()
-    val revision: String? get() = if (hasCustom) MessageDigest.getInstance("SHA-256").digest(file.readFully()).take(8)
-        .joinToString("") { "%02x".format(it.toInt() and 255) } else null
+    /** The user's own plan exactly as stored, for sending to the paired computer. */
+    val customText: String? get() = if (hasCustom) String(file.readFully(), Charsets.UTF_8) else null
+    val revision: String? get() = if (hasCustom) revision(file.readFully()) else null
 
     init { if (active == "custom" && !hasCustom) select("home") }
 

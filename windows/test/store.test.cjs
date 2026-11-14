@@ -38,6 +38,12 @@ test('earlier homes: a replaced home is kept, an edit once an hour, and restore 
   assert.ok(store.earlierHomes().some(h => h.name === 'B'));
   assert.throws(() => store.restore('missing.json'));
 });
+test('saving without select keeps a demo plan on show', t => {
+  const store = new PlanStore(temp(t)); store.select('studio');
+  store.save('{"name":"Phone","rooms":[{"id":"a"}]}', { select: false });
+  assert.equal(store.activePlan, 'studio'); assert.equal(store.custom().name, 'Phone');
+});
+
 test('the bundled house demo can be selected', t => {
   const store = new PlanStore(temp(t)); store.select('house'); assert.equal(new PlanStore(store.directory).activePlan, 'house');
 });

@@ -20,6 +20,7 @@ class DesktopSync {
       if (message.event === 'showQR') this.options.onShowQR?.(message.content, message.device);
       if (message.event === 'failure') this.options.onError?.(new Error(message.error));
       if (message.event === 'catalog') this.options.onCatalog?.(message.devices, message.device);
+      if (message.event === 'plan') this.options.onPlan?.(message.plan, message.device);
       if (message.id) {
         const request = this.pending.get(message.id); if (!request) return;
         this.pending.delete(message.id); clearTimeout(request.timer);
