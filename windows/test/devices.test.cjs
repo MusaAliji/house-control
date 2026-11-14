@@ -112,9 +112,26 @@ test('Hue SSE parses chunked events, filters resources and reconnects without st
   responses[0].end(); await waitFor(() => responses.length === 2, 'SSE reconnected');
   responses[1].write('data: [{"data":[{"id":"watched"}]}]\n\n'); live.stop(); await new Promise(r => setTimeout(r, 45)); assert.equal(changes, 1); assert.equal(live.timers.size, 0);
 });
-test('shared connections omit disconnected services; adoption clears missing platforms', () => {
+test('shared connections carry stamps; the newer side wins and a missing platform is left alone', () => {
   const hub = new DeviceHub(store({ homeassistant: { url: 'http://lab', token: 'secret' }, hue: { host: 'bridge', key: 'private', certificate: 'pin' } }));
-  hub.adoptConnections({ homeassistant: { url: 'http://new', token: 'new-secret' } }); assert.equal(hub.hue.connected, false); assert.deepEqual(Object.keys(hub.shareableConnections()), ['homeassistant']);
+  // Never stamped here: an unstamped phone (an older version) fills it in, as on the Mac, until this PC stamps it.
+  assert.equal(hub.adoptConnections({ homeassistant: { url: 'http://old', token: 'x' } }), true);
+  assert.equal(hub.shareableConnections().homeassistant.url, 'http://old');
+  hub.stamp('homeassistant');
+  assert.equal(hub.adoptConnections({ homeassistant: { url: 'http://lab', token: 'secret' } }), false); const ours = hub.shareableConnections().homeassistant.updated; assert.ok(ours > 1e9 && ours < 1e11, 'seconds, like the Mac');
+  // Older than ours: ignored. Newer: taken, Hue (missing) untouched.
+  assert.equal(hub.adoptConnections({ homeassistant: { url: 'http://older', token: 'x', updated: ours - 10 } }), false);
+  assert.equal(hub.adoptConnections({ homeassistant: { url: 'http://new', token: 'new-secret', updated: ours + 10 } }), true);
+  assert.deepEqual(hub.homeAssistant.shareable(), { url: 'http://new', token: 'new-secret' });
+  assert.equal(hub.hue.connected, true);
+  // A newer disconnect on the phone removes it here, and this PC then shares the removal.
+  assert.equal(hub.adoptConnections({ hue: { removed: true, updated: ours + 20 } }), true);
+  assert.equal(hub.hue.connected, false);
+  assert.deepEqual(hub.shareableConnections().hue, { removed: true, updated: ours + 20 });
+  // Our own disconnect is newer than what the phone had.
+  hub.homeAssistant.disconnect(); hub.stamp('homeassistant');
+  assert.equal(hub.shareableConnections().homeassistant.removed, true);
+  assert.equal(hub.adoptConnections({ homeassistant: { url: 'http://new', token: 'new-secret', updated: ours + 10 } }), false);
 });
 test('signing out during Smart Life token refresh cannot restore the removed session', async () => {
   const original = { accessToken: 'old', refreshToken: 'refresh', expiresAt: 0, endpoint: 'https://cloud.example', uid: 'uid' };

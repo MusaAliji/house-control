@@ -18,6 +18,7 @@ let plans, secrets, hub, sync, agent, tray, quitting = false, islandTimer, pollT
 const assetRoot = path.resolve(__dirname, '../assets');
 const name = process.env.HOUSE_COMPUTER_NAME || os.hostname();
 let syncError = '';
+let phoneUserCode = ''; // the Smart Life User Code a paired phone signed in with
 
 function log(error) {
   // Log only diagnostics; never serialize commands, tokens, QR content or boot data.
@@ -29,7 +30,7 @@ function invoke(win, method, ...args) {
 }
 function notify(mode, method, ...args) { return invoke(windows.get(mode), method, ...args); }
 function boot(mode) {
-  return { ...plans.boot(), mode, platform: 'windows', openAtLogin: app.getLoginItemSettings().openAtLogin ? 'on' : 'off', tuya: hub.tuyaInfo, smartLife: hub.smartLifeInfo,
+  return { ...plans.boot(), mode, platform: 'windows', openAtLogin: app.getLoginItemSettings().openAtLogin ? 'on' : 'off', tuya: hub.tuyaInfo, smartLife: mode === 'editor' ? smartLifeForEditor() : hub.smartLifeInfo,
     services: hub.servicesInfo, agentLive: agent.status().state === 'live', agent: agent.status(),
     ...(mode === 'island' ? { island: { notchWidth: 190, notchHeight: 34, hasNotch: false } } : {}) };
 }
@@ -106,6 +107,20 @@ function receivedPlan(text, device) {
   broadcast(); buildTray();
   // An open editor takes the new plan unless it holds unsaved changes of its own.
   notify('editor', 'planArrived', plans.custom(), device);
+}
+/** A phone's Home Assistant and Hue connections: each one newer than this PC's replaces it. */
+function receivedConnections(shared, userCode, device) {
+  if (userCode) phoneUserCode = userCode;
+  let changed = false;
+  try { changed = hub.adoptConnections(shared); } catch (error) { log(error); return; }
+  if (!changed) return;
+  refreshLinks(); broadcast(); poll();
+  notify('editor', 'servicesChanged', hub.servicesInfo);
+}
+/** Smart Life as the editor shows it: the phone's User Code fills the sign-in when this PC has none. */
+function smartLifeForEditor() {
+  const info = hub.smartLifeInfo;
+  return !info.connected && phoneUserCode ? { ...info, userCode: phoneUserCode } : info;
 }
 async function savePlan(config) { plans.save(config); reload(); return { ok: true, path: plans.file }; }
 async function importDialog(owner) {
@@ -245,16 +260,18 @@ async function handle(message, win) {
     case 'smartlife.poll': { const connected = await hub.finishLogin(message.token || '', message.userCode || ''); if (connected) broadcast(); return { connected, info: hub.smartLifeInfo }; }
     case 'smartlife.signOut': hub.signOut(); broadcast(); return hub.smartLifeInfo;
     case 'services.discover': return { found: await hub.discover(message.service) };
-    case 'homeassistant.connect': await hub.homeAssistant.connect(message.url || '', message.token || ''); break;
+    case 'homeassistant.connect': await hub.homeAssistant.connect(message.url || '', message.token || ''); hub.stamp('homeassistant'); break;
     case 'hue.pair': {
-      try { await hub.hue.pair(message.host || '', message.bridgeId, message.name); }
+      try { await hub.hue.pair(message.host || '', message.bridgeId, message.name); hub.stamp('hue'); }
       catch (error) { if (error.waiting || error.code === '101' || error.name === 'ButtonNotPressed') return { waiting: true }; throw error; }
       break;
     }
     case 'service.disconnect': {
       const services = { homeassistant: hub.homeAssistant, hue: hub.hue, smartlife: hub.smartLife, tuya: hub.tuya };
       if (!services[message.service]) throw new Error('This platform is unavailable on Windows.');
-      services[message.service].disconnect(); break;
+      services[message.service].disconnect();
+      if (['homeassistant', 'hue'].includes(message.service)) hub.stamp(message.service);
+      break;
     }
     default: throw new Error(`Unknown editor action: ${type}`);
   }
@@ -279,6 +296,7 @@ else {
       snapshot, onPeersChanged: () => { pairingStatus().catch(log); buildTray(); },
       onShowQR: (content, device) => showLoginCode(content, device).catch(log),
       onPlan: (text, device) => receivedPlan(text, device),
+      onConnections: (shared, userCode, device) => receivedConnections(shared, userCode, device),
       onError: error => { syncError = error.message; pairingStatus().catch(log); log(error); },
     });
     agent = createAgent({

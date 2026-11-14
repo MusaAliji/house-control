@@ -38,6 +38,7 @@ everywhere and are listed once at the top.
 | 13 | Pair Phone window (QR, copy link, reset, disable) | Same | ✅ | Windows copy says "Android / iPhone". |
 | 14 | Sync server (Bonjour, TLS-PSK, plan revisions, connections share) | Node worker, same protocol | ✅ | Tested against Android's BouncyCastle. |
 | 15 | Show Smart Life QR forwarded from phone | Same (`login` window) | ✅ | |
+| 15b | Take the phone's Home Assistant / Hue connections (newer side wins) and its Smart Life User Code | Same rules and timestamps as the Mac | ✅ | Before 2026-11-14 Windows ignored them. |
 | 16 | Smart Life QR sign-in | Same | ✅ | |
 | 17 | Tuya developer project credentials | Same | ✅ | |
 | 18 | Smart Life IR lights/ACs via Tap-to-Run scenes | Implemented in `devices.cjs` | ✅ | |
@@ -91,7 +92,8 @@ everywhere and are listed once at the top.
 ## 3. Suggested order (user value over effort)
 
 1. ~~Android: open the shared editor~~ and ~~the sync conflict prompt~~: done (2026-11-14).
-2. Windows: accept the phone's `connections` message (iOS sends it; Windows ignores it, like `plan` before).
+2. ~~Windows: accept the phone's `connections` message~~: done (2026-11-14), with the Mac's timestamps.
+   Android still neither sends its connections nor keeps timestamps; it replaces its own with the computer's.
 3. **Windows: Settings window and About** (rows 4 to 6).
 4. Android: Home Assistant and Hue discovery, Tuya developer UI.
 5. Android widgets and shortcuts; the ARCore scan last.

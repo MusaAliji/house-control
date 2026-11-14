@@ -24,6 +24,8 @@ What changed in each release of House Control. The Mac app is on
 - **Plans go both ways between Android and the computer.** A plan saved on the phone reaches the paired Mac or PC. If both
   changed it while apart, the phone asks which one to keep, as the iPhone does.
 - **Windows** now takes a plan saved on a paired phone (it ignored it before).
+- **Windows** now takes a paired iPhone's Home Assistant and Hue connections, like the Mac: whichever side connected or
+  disconnected a platform last wins on both. The phone's Smart Life User Code fills in the PC's sign-in.
 
 ## 1.5.2 — 2026-11-13
 

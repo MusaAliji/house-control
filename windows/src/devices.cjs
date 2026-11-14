@@ -368,7 +368,7 @@ function sceneSwitchCommand(link, patch) {
   return { homeId: String(pair.homeId), sceneId: String(on ? pair.on : pair.off), on };
 }
 class DeviceHub {
-  constructor(store, options = {}) { if (typeof options === 'function') options = { request: options }; this.smartLife = new SmartLifeService(store, options.request); this.smartlife = this.smartLife; this.tuya = new TuyaService(store, options.request); this.homeAssistant = new HomeAssistantService(store, options.request); this.hue = new HueService(store, options.request); this.services = [this.homeAssistant, this.hue]; this.links = {}; this.locks = new Map(); this.infrared = new InfraredRemote(options.irSpacing ?? 1000); this.onStale = options.onStale; this.live = new LiveUpdates(this.homeAssistant, this.hue, () => this.onStale?.(), options.live); this.running = false; for (const service of this.services) service.onConfigChanged = () => this.refreshLive(); }
+  constructor(store, options = {}) { if (typeof options === 'function') options = { request: options }; this.store = store; this.smartLife = new SmartLifeService(store, options.request); this.smartlife = this.smartLife; this.tuya = new TuyaService(store, options.request); this.homeAssistant = new HomeAssistantService(store, options.request); this.hue = new HueService(store, options.request); this.services = [this.homeAssistant, this.hue]; this.links = {}; this.locks = new Map(); this.infrared = new InfraredRemote(options.irSpacing ?? 1000); this.onStale = options.onStale; this.live = new LiveUpdates(this.homeAssistant, this.hue, () => this.onStale?.(), options.live); this.running = false; for (const service of this.services) service.onConfigChanged = () => this.refreshLive(); }
   get cloud() { return this.smartLife.connected ? this.smartLife : this.tuya.connected ? this.tuya : null; }
   get connected() { return !!this.cloud || this.services.some(s => s.connected); }
   get canPoll() { return Object.keys(this.links).length > 0 && this.connected; }
@@ -401,8 +401,40 @@ class DeviceHub {
   }
   async listDevices() { if (!this.cloud) throw new DeviceFailure('Connect Smart Life first'); return this.cloud.listDevices(); }
   async allDevices() { const devices = [], errors = {}; if (this.cloud) try { for (const d of await this.cloud.listDevices()) { const codes = new Set(d.codes || []), kind = ['kt', 'ktkzq', 'infrared_ac'].includes(d.category) || infrared(codes) || codes.has('temp_set') ? 'ac' : ['wsdcg', 'wk', 'wnykq'].includes(d.category) || codes.has('temp_current') && !codes.has('switch_led') ? 'sensor' : 'light'; devices.push({ ...d, service: 'smartlife', kind, capabilities: [['brightness', ['bright_value', 'bright_value_v2']], ['temp', ['temp_value', 'temp_value_v2']], ['color', ['colour_data', 'colour_data_v2']]].filter(([, names]) => names.some(n => codes.has(n))).map(([key]) => key), detail: [d.product, d.category].filter(Boolean).join(' · ') }); } } catch (e) { errors.smartlife = e.message; } await Promise.all(this.services.filter(s => s.connected).map(async s => { try { devices.push(...await s.devices()); } catch (e) { errors[s.id] = e.message; } })); return { devices, errors }; }
-  shareableConnections() { return Object.fromEntries(this.services.filter(s => s.connected).map(s => [s.id, s.shareable()])); }
-  adoptConnections(shared) { for (const service of this.services) service.adopt(shared[service.id] || null); }
+  // When Home Assistant and Hue were last connected or disconnected here, or adopted from a phone, in seconds
+  // since 1970: the newer side wins when two devices disagree. The same rules as the Mac (core/DeviceHub.swift).
+  get stamps() { const value = this.store.get('connectionStamps'); return (typeof value === 'string' ? JSON.parse(value) : value) || {}; }
+  set stamps(value) { this.store.set('connectionStamps', value); }
+  /** A connection made or dropped on this PC. */
+  stamp(id) { const all = { ...this.stamps }; all[id] = Math.max(Date.now() / 1000, (all[id] || 0) + 0.001); this.stamps = all; }
+  /** Address and token / bridge key with when they were set, or `removed` after a disconnect. */
+  shareableConnections() {
+    const known = this.stamps, out = {};
+    for (const service of this.services) {
+      const updated = known[service.id] || 0, config = service.shareable();
+      if (config) out[service.id] = { ...config, updated }; else if (updated > 0) out[service.id] = { removed: true, updated };
+    }
+    return out;
+  }
+  /** Takes what a phone shared, platform by platform, where it is newer than what this PC has. A platform
+   *  missing from `shared` is left alone. Returns true when a connection changed here. */
+  adoptConnections(shared) {
+    const known = { ...this.stamps }; let changed = false;
+    for (const service of this.services) {
+      const incoming = shared?.[service.id];
+      if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) continue;
+      const theirs = Number(incoming.updated) || 0, ours = known[service.id] || 0;
+      // A phone without stamps (an older version) only fills in what was never set here.
+      if (!(theirs > 0 ? theirs > ours : ours === 0)) continue;
+      const before = JSON.stringify(service.shareable());
+      if (incoming.removed === true) service.disconnect();
+      else { const { updated: _updated, removed: _removed, ...config } = incoming; service.adopt(config); }
+      known[service.id] = theirs;
+      if (JSON.stringify(service.shareable()) !== before) changed = true;
+    }
+    this.stamps = known;
+    return changed;
+  }
   beginLogin(userCode) { return this.smartLife.beginLogin(userCode); }
   finishLogin(token, userCode) { return this.smartLife.finishLogin(token, userCode); }
   signOut() { this.smartLife.signOut(); }

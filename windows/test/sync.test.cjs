@@ -118,6 +118,20 @@ test('a plan from the phone needs hello and a valid plan, and is not echoed back
   assert.equal(state.rev, current.revision); assert.equal(state.plan, undefined);
 });
 
+test('connections from the phone need hello and an object', { timeout: 10000 }, async t => {
+  const server = await serverFor(t, () => ({ revision: '' }));
+  const socket = connect(server); t.after(() => socket.destroy());
+  const next = inbox(socket); await once(socket, 'secureConnect');
+  const received = []; server.onConnections = (...args) => received.push(args);
+  const shared = { hue: { host: 'bridge', key: 'k', updated: 5 } };
+  socket.write(encodeFrame({ type: 'connections', connections: shared })); // before hello: ignored
+  socket.write(encodeFrame({ type: 'hello', device: 'Pixel', rev: '' })); await next();
+  socket.write(encodeFrame({ type: 'connections', connections: [] })); // not an object: ignored
+  const event = once(server, 'connections');
+  socket.write(encodeFrame({ type: 'connections', connections: shared, userCode: 'abc' })); await event;
+  assert.deepEqual(received, [[shared, 'abc', 'Pixel']]);
+});
+
 test('wrong PSK fails before snapshot or application messages', { timeout: 10000 }, async t => {
   let served = false;
   const server = await serverFor(t, () => { served = true; return { revision: '' }; });

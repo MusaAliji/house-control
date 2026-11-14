@@ -100,6 +100,7 @@ class SyncServer extends EventEmitter {
     this.onShowQR = options.onShowQR;
     this.onCatalog = options.onCatalog;
     this.onPlan = options.onPlan;
+    this.onConnections = options.onConnections;
     this.onError = options.onError;
     this.listener = null; this.peers = new Map(); this.sockets = new Set();
     this.isAdvertised = false; this.bonjour = null; this.service = null; this.advertisingTimer = null;
@@ -237,6 +238,14 @@ class SyncServer extends EventEmitter {
         // The phone holds this revision now: the broadcast that follows need not echo it.
         peer.revision = planRevision(bytes);
         this.onPlan?.(message.plan, peer.name); this.emit('plan', message.plan, peer.name);
+        break;
+      }
+      case 'connections': {
+        // The phone's Home Assistant and Hue connections, and its Smart Life User Code.
+        const shared = message.connections;
+        if (!peer.name || !shared || typeof shared !== 'object' || Array.isArray(shared)) break;
+        const userCode = typeof message.userCode === 'string' ? message.userCode : '';
+        this.onConnections?.(shared, userCode, peer.name); this.emit('connections', shared, userCode, peer.name);
         break;
       }
     }
