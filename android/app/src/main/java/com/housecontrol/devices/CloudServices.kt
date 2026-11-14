@@ -59,6 +59,10 @@ class SmartLifeService(context:Context):DeviceCloud {
         ids.forEach { prepare(it) };return out
     }
     override fun send(id:String,commands:JSONArray){if(commands.length()>0)request("POST","/v1.1/m/thing/${enc(id)}/commands",body=obj("commands" to commands))}
+    /** DIY IR keys are not standard data points; Smart Life Tap-to-Run scenes wrap the learned key. */
+    fun triggerScene(homeId:String,sceneId:String){
+        if(request("POST","/v1.0/m/scene/ha/trigger",body=obj("homeId" to homeId,"sceneId" to sceneId))!=true)throw DeviceFailure("Smart Life did not run the linked IR command")
+    }
     override fun prepare(id:String){
         if(knownRanges.containsKey(id))return
         knownRanges[id]=emptyMap()

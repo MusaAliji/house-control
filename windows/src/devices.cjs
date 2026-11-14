@@ -251,6 +251,8 @@ class SmartLifeService extends Service {
   async status(ids) { const out = {}; for (let i = 0; i < ids.length; i += 20) for (const d of await this.call('GET', '/v1.0/m/life/ha/devices/detail', { devIds: ids.slice(i, i + 20).join(',') }) || []) if (d.status) { out[d.id] = d.status; this.knownCodes[d.id] = new Set([...(this.knownCodes[d.id] || []), ...d.status.map(dp => dp.code)]); } for (const id of ids) await this.prepare(id); return out; }
   async prepare(id) { if (this.knownRanges[id]) return; try { const spec = await this.call('GET', `/v1.1/m/life/${enc(id)}/specifications`), ranges = {}, codes = new Set(this.knownCodes[id] || []); for (const item of [...(spec.status || []), ...(spec.functions || [])]) { codes.add(item.code); try { const v = typeof item.values === 'string' ? JSON.parse(item.values) : item.values; if (v?.max > v?.min) ranges[item.code] = [v.min, v.max]; } catch {} } this.knownCodes[id] = codes; this.knownRanges[id] = ranges; } catch {} }
   async send(id, commands) { if (commands.length) await this.call('POST', `/v1.1/m/thing/${enc(id)}/commands`, {}, { commands }); }
+  // DIY IR keys are not standard data points; Smart Life Tap-to-Run scenes wrap the learned key.
+  async triggerScene(homeId, sceneId) { if ((await this.call('POST', '/v1.0/m/scene/ha/trigger', {}, { homeId, sceneId })) !== true) throw new DeviceFailure('Smart Life did not run the linked IR command'); }
   async diagnostics(ids) { const out = {}; for (const d of await this.call('GET', '/v1.0/m/life/ha/devices/detail', { devIds: ids.join(',') }) || []) { out[d.id] = { ...d }; for (const [key, path] of [['specification', `/v1.1/m/life/${enc(d.id)}/specifications`], ['strategy', `/v1.0/m/life/devices/${enc(d.id)}/status`]]) try { out[d.id][key] = await this.call('GET', path); } catch (e) { out[d.id][key + '_error'] = e.message; } } return out; }
 }
 const hosts = { eu: 'openapi.tuyaeu.com', 'eu-w': 'openapi-weaz.tuyaeu.com', us: 'openapi.tuyaus.com', 'us-e': 'openapi-ueaz.tuyaus.com', cn: 'openapi.tuyacn.com', in: 'openapi.tuyain.com', sg: 'openapi-sg.iotbing.com' };
@@ -358,6 +360,13 @@ class LiveUpdates {
     } catch { retry(); }
   }
 }
+// A learned IR light switch: an explicit pair of Smart Life Tap-to-Run scenes, on/off only.
+function sceneSwitchCommand(link, patch) {
+  const pair = link?.sceneSwitch, on = patch?.on;
+  if (!pair || !pair.homeId || !pair.on || !pair.off || pair.on === pair.off || typeof on !== 'boolean') throw new DeviceFailure('Link separate Smart Life ON and OFF commands for this IR light');
+  if (!Object.keys(patch).every(k => k === 'on')) throw new DeviceFailure('This IR light supports on/off only');
+  return { homeId: String(pair.homeId), sceneId: String(on ? pair.on : pair.off), on };
+}
 class DeviceHub {
   constructor(store, options = {}) { if (typeof options === 'function') options = { request: options }; this.smartLife = new SmartLifeService(store, options.request); this.smartlife = this.smartLife; this.tuya = new TuyaService(store, options.request); this.homeAssistant = new HomeAssistantService(store, options.request); this.hue = new HueService(store, options.request); this.services = [this.homeAssistant, this.hue]; this.links = {}; this.locks = new Map(); this.infrared = new InfraredRemote(options.irSpacing ?? 1000); this.onStale = options.onStale; this.live = new LiveUpdates(this.homeAssistant, this.hue, () => this.onStale?.(), options.live); this.running = false; for (const service of this.services) service.onConfigChanged = () => this.refreshLive(); }
   get cloud() { return this.smartLife.connected ? this.smartLife : this.tuya.connected ? this.tuya : null; }
@@ -375,13 +384,14 @@ class DeviceHub {
     const key = `${link.platform}:${link.target}`, previous = this.locks.get(key) || Promise.resolve();
     const current = previous.catch(() => {}).then(async () => {
       const patch = message.patch || {}, state = message.state || {};
-      try { if (link.platform === 'smartlife') { const c = this.cloud; if (!c) throw new DeviceFailure('Connect Smart Life first'); await c.prepare(link.target); const codes = c.knownCodes[link.target] || new Set(), ranges = c.knownRanges[link.target] || {}; if (link.kind === 'light') await c.send(link.target, TuyaMapper.lightCommands(patch, state, link.data, codes, ranges)); else if (infrared(codes)) await this.infrared.apply(link.target, patch, state, command => c.send(link.target, [command])); else await c.send(link.target, TuyaMapper.acCommands(patch, link.data, codes)); } else { const service = this.services.find(s => s.id === link.platform); if (!service) throw new DeviceFailure(`${link.platform} is unavailable on Windows. Connect this device through Home Assistant or Hue.`); if (!service.connected) throw new DeviceFailure(`Connect ${service.id} first`); await service.send(link.kind, link.target, patch, state); } return { ok: true }; } catch (e) { this.onStale?.(); return { ok: false, error: e.message || 'Device command failed', ...(e.fields?.length ? { failed: e.fields } : {}) }; }
+      try { if (link.platform === 'smartlife' && link.kind === 'light' && link.data?.sceneSwitch) { const cmd = sceneSwitchCommand(link.data, patch); if (!this.smartLife.connected) throw new DeviceFailure('Connect Smart Life to use this IR switch'); await this.smartLife.triggerScene(cmd.homeId, cmd.sceneId); } else if (link.platform === 'smartlife') { const c = this.cloud; if (!c) throw new DeviceFailure('Connect Smart Life first'); await c.prepare(link.target); const codes = c.knownCodes[link.target] || new Set(), ranges = c.knownRanges[link.target] || {}; if (link.kind === 'light') await c.send(link.target, TuyaMapper.lightCommands(patch, state, link.data, codes, ranges)); else if (infrared(codes)) await this.infrared.apply(link.target, patch, state, command => c.send(link.target, [command])); else await c.send(link.target, TuyaMapper.acCommands(patch, link.data, codes)); } else { const service = this.services.find(s => s.id === link.platform); if (!service) throw new DeviceFailure(`${link.platform} is unavailable on Windows. Connect this device through Home Assistant or Hue.`); if (!service.connected) throw new DeviceFailure(`Connect ${service.id} first`); await service.send(link.kind, link.target, patch, state); } return { ok: true }; } catch (e) { this.onStale?.(); return { ok: false, error: e.message || 'Device command failed', ...(e.fields?.length ? { failed: e.fields } : {}) }; }
     });
     this.locks.set(key, current); try { return await current; } finally { if (this.locks.get(key) === current) this.locks.delete(key); }
   }
   async poll() {
     const snapshot = this.links, lights = {}, acs = {}, features = {}, errors = {}, c = this.cloud;
-    const cloudLinks = Object.entries(snapshot).filter(([, l]) => l.platform === 'smartlife');
+    // A learned IR key reports no power state; the last command stands.
+    const cloudLinks = Object.entries(snapshot).filter(([, l]) => l.platform === 'smartlife' && !l.data?.sceneSwitch);
     if (c && cloudLinks.length) try { const ids = [...new Set(cloudLinks.flatMap(([, l]) => [l.target, l.data.sensorId]).filter(Boolean))], status = await c.status(ids); for (const [id, l] of cloudLinks) { const ranges = c.knownRanges[l.target] || {}; if (l.kind === 'light') { if (status[l.target]) lights[id] = TuyaMapper.lightState(status[l.target], ranges); } else { const f = TuyaMapper.features(c.knownCodes[l.target] || new Set(), ranges); if (f) features[id] = f; const state = status[l.target] ? TuyaMapper.acState(status[l.target]) : {}; const t = status[l.data.sensorId] && TuyaMapper.sensor(status[l.data.sensorId]); if (t != null) state.roomTemp = t; if (Object.keys(state).length) acs[id] = state; } } } catch (e) { errors.smartlife = e.message; }
     const readings = {};
     await Promise.all(this.services.filter(s => s.connected).map(async service => { const ids = new Set(Object.values(snapshot).flatMap(l => [l.platform === service.id ? l.target : '', l.sensor?.service === service.id ? l.sensor.id : '']).filter(Boolean)); if (ids.size) try { readings[service.id] = await service.read(ids); } catch (e) { errors[service.id] = e.message; } }));
@@ -421,4 +431,4 @@ class DeviceHub {
   start() { this.running = true; this.refreshLive(); }
   stop() { this.running = false; this.live.stop(); }
 }
-module.exports = { DeviceHub, DeviceFailure, HomeAssistantService, HueService, SmartLifeService, TuyaService, TuyaMapper, InfraredRemote, Transport, Colors, request, LiveUpdates };
+module.exports = { sceneSwitchCommand, DeviceHub, DeviceFailure, HomeAssistantService, HueService, SmartLifeService, TuyaService, TuyaMapper, InfraredRemote, Transport, Colors, request, LiveUpdates };

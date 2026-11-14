@@ -97,4 +97,13 @@ class DeviceParityTest {
             SmartLifeService.Transport.decrypt(java.util.Base64.getEncoder().encodeToString(bytes), secret)
         }
     }
+
+    @Test fun learnedIrLightSwitchesThroughItsOnAndOffScenes() {
+        val link = obj("sceneSwitch" to obj("homeId" to "7", "on" to "sc-on", "off" to "sc-off"))
+        assertEquals(SceneSwitch.Command("7", "sc-on", true), SceneSwitch.command(link, obj("on" to true)))
+        assertEquals(SceneSwitch.Command("7", "sc-off", false), SceneSwitch.command(link, obj("on" to false)))
+        assertThrows(DeviceFailure::class.java) { SceneSwitch.command(link, obj("on" to true, "brightness" to 0.5)) }
+        assertThrows(DeviceFailure::class.java) { SceneSwitch.command(link, JSONObject()) }
+        assertThrows(DeviceFailure::class.java) { SceneSwitch.command(obj("sceneSwitch" to obj("homeId" to "7", "on" to "x", "off" to "x")), obj("on" to true)) }
+    }
 }

@@ -278,12 +278,27 @@ class MainActivity : Activity() {
     private fun welcomed() { getPreferences(MODE_PRIVATE).edit().putBoolean("welcomed", true).apply() }
     private fun refreshSettingsIfOpen() { if (settings?.isShowing == true) showSettings() }
 
+    private fun showEarlierHomes() {
+        val homes = plans.earlier.list().take(12)
+        val format = java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT)
+        val titles = homes.map { "${it.name} · ${it.rooms} rooms, ${it.devices} devices · ${format.format(java.util.Date(it.date))}" }.toTypedArray()
+        AlertDialog.Builder(this).setTitle("Earlier homes").setItems(titles) { _, which ->
+            val home = homes[which]
+            AlertDialog.Builder(this).setTitle("Bring back ${home.name}?")
+                .setMessage("It becomes the home on this phone. The home here now is kept under Earlier homes.")
+                .setPositiveButton("Bring back") { _, _ ->
+                    try { plans.restore(home.id); reloadHome() } catch (error: Exception) { showError(error) }
+                    showSettings()
+                }.setNegativeButton("Cancel") { _, _ -> showSettings() }.show()
+        }.setNegativeButton("Close") { _, _ -> showSettings() }.show()
+    }
+
     private fun showSettings() {
         settings?.dismiss()
         val body = column()
         section(body, "Home")
         if (plans.hasCustom) button(body, "${if (plans.active == "custom") "✓  " else ""}${plans.custom?.optString("name", "My home")}") { plans.select("custom"); reloadHome(); showSettings() }
-        for ((id, title) in listOf("home" to "Apartment · demo", "studio" to "Studio · demo")) {
+        for ((id, title) in listOf("home" to "Apartment · demo", "studio" to "Studio · demo", "house" to "House on two floors · demo")) {
             button(body, "${if (plans.active == id) "✓  " else ""}$title") { plans.select(id); reloadHome(); showSettings() }
         }
         button(body, "Import floor plan…") {
@@ -295,6 +310,7 @@ class MainActivity : Activity() {
             AlertDialog.Builder(this).setTitle("Remove your floor plan?").setMessage("You can import it or sync it from your computer again.")
                 .setPositiveButton("Remove") { _, _ -> plans.remove(); reloadHome(); showSettings() }.setNegativeButton("Cancel", null).show()
         }
+        if (plans.earlier.list().isNotEmpty()) button(body, "Earlier homes…") { settings?.dismiss(); showEarlierHomes() }
         section(body, "Computer")
         label(body, sync.pairing?.name ?: "Bring your home over")
         label(body, when (sync.status) {

@@ -51,7 +51,11 @@ class DeviceHub(context:Context) {
         if(link.target.isEmpty())return obj("ok" to true)
         return synchronized(locks.getOrPut("${link.platform}:${link.target}"){Any()}){
             try{
-                if(link.platform=="smartlife"){
+                if(link.platform=="smartlife"&&link.kind=="light"&&link.data.has("sceneSwitch")){
+                    val command=SceneSwitch.command(link.data,patch)
+                    if(!smartLife.connected)throw DeviceFailure("Connect Smart Life to use this IR switch")
+                    smartLife.triggerScene(command.homeId,command.sceneId)
+                }else if(link.platform=="smartlife"){
                     val c=cloud?:throw DeviceFailure("Connect Smart Life first");c.prepare(link.target);val codes=c.knownCodes[link.target]?:emptySet();val ranges=c.knownRanges[link.target]?:emptyMap()
                     if(link.kind=="light")c.send(link.target,TuyaMapper.lightCommands(patch,state,link.data,codes,ranges))
                     else if(TuyaMapper.infrared(codes))infrared.apply(link.target,patch,state){c.send(link.target,JSONArray().put(it))}
@@ -67,7 +71,8 @@ class DeviceHub(context:Context) {
     }
     fun poll():JSONObject {
         val snapshot=links;val lights=JSONObject();val acs=JSONObject();val features=JSONObject();val errors=JSONObject();val c=cloud
-        if(c!=null){val cloudLinks=snapshot.filterValues{it.platform=="smartlife"};if(cloudLinks.isNotEmpty())try{
+        if(c!=null){// A learned IR key reports no power state; the last command stands.
+        val cloudLinks=snapshot.filterValues{it.platform=="smartlife"&&!it.data.has("sceneSwitch")};if(cloudLinks.isNotEmpty())try{
             val ids=cloudLinks.values.flatMap{listOf(it.target,it.data.optString("sensorId"))}.filter{it.isNotEmpty()}.distinct();val status=c.status(ids)
             cloudLinks.forEach{(id,link)->
                 val ranges=c.knownRanges[link.target]?:emptyMap();if(link.kind=="light")status[link.target]?.let{lights.put(id,TuyaMapper.lightState(it,ranges))}

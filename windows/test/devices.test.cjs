@@ -3,7 +3,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
 const crypto = require('node:crypto');
-const { DeviceHub, HomeAssistantService, HueService, TuyaService, SmartLifeService, DeviceFailure, TuyaMapper, InfraredRemote, Transport, request, LiveUpdates } = require('../src/devices.cjs');
+const { sceneSwitchCommand, DeviceHub, HomeAssistantService, HueService, TuyaService, SmartLifeService, DeviceFailure, TuyaMapper, InfraredRemote, Transport, request, LiveUpdates } = require('../src/devices.cjs');
 const store = initial => { const values = new Map(Object.entries(initial || {})); return { get: key => values.get(key), set: (key, value) => values.set(key, value) }; };
 const bulb = new Set(['switch_led', 'work_mode', 'bright_value_v2', 'temp_value_v2', 'colour_data_v2']);
 const ranges = { bright_value_v2: [10, 1000], temp_value_v2: [0, 1000] };
@@ -181,4 +181,19 @@ test('Hue pin verifies TLS before a private key is sent to an unexpected bridge'
   assert.deepEqual(await hue.get('light'), []); assert.equal(requests, 1);
   hue.adopt({ ...hue.config, certificate: '0'.repeat(64) });
   await assert.rejects(hue.get('light'), /certificate changed/); assert.equal(requests, 1, 'wrong certificate must not receive any HTTP request or key');
+});
+test('a learned IR light switches through its Smart Life ON and OFF scenes', async () => {
+  const link = { sceneSwitch: { homeId: '7', on: 'sc-on', off: 'sc-off' } };
+  assert.deepEqual(sceneSwitchCommand(link, { on: true }), { homeId: '7', sceneId: 'sc-on', on: true });
+  assert.deepEqual(sceneSwitchCommand(link, { on: false }), { homeId: '7', sceneId: 'sc-off', on: false });
+  assert.throws(() => sceneSwitchCommand(link, { on: true, brightness: .5 }), /on\/off only/);
+  assert.throws(() => sceneSwitchCommand(link, {}), /Link separate/);
+  assert.throws(() => sceneSwitchCommand({ sceneSwitch: { homeId: '7', on: 'x', off: 'x' } }, { on: true }), /Link separate/);
+  const hub = new DeviceHub(store({})), calls = [];
+  hub.smartLife.triggerScene = async (home, scene) => calls.push([home, scene]);
+  Object.defineProperty(hub.smartLife, 'connected', { get: () => true });
+  hub.links = { lamp: { kind: 'light', platform: 'smartlife', target: 'dev', data: link } };
+  assert.deepEqual(await hub.command({ id: 'lamp', patch: { on: true } }), { ok: true });
+  assert.deepEqual(calls, [['7', 'sc-on']]);
+  assert.equal((await hub.command({ id: 'lamp', patch: { brightness: .5 } })).ok, false);
 });

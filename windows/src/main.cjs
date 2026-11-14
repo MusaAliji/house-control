@@ -29,7 +29,7 @@ function invoke(win, method, ...args) {
 }
 function notify(mode, method, ...args) { return invoke(windows.get(mode), method, ...args); }
 function boot(mode) {
-  return { ...plans.boot(), mode, platform: 'windows', tuya: hub.tuyaInfo, smartLife: hub.smartLifeInfo,
+  return { ...plans.boot(), mode, platform: 'windows', openAtLogin: app.getLoginItemSettings().openAtLogin ? 'on' : 'off', tuya: hub.tuyaInfo, smartLife: hub.smartLifeInfo,
     services: hub.servicesInfo, agentLive: agent.status().state === 'live', agent: agent.status(),
     ...(mode === 'island' ? { island: { notchWidth: 190, notchHeight: 34, hasNotch: false } } : {}) };
 }
@@ -81,6 +81,20 @@ function reload({ editor = false } = {}) {
   refreshLinks();
   for (const [mode, win] of windows) if (['panel', 'island'].includes(mode) || (editor && mode === 'editor')) load(win);
   broadcast(); buildTray();
+}
+async function restoreEarlier(home) {
+  const answer = await dialog.showMessageBox(show(), { type: 'question', buttons: ['Bring Back', 'Cancel'], defaultId: 0, cancelId: 1, message: `Bring back ${home.name}?`,
+    detail: 'It becomes the home on this PC and on the paired phones. The home here now is kept under Earlier Homes.' });
+  if (answer.response !== 0) return;
+  plans.restore(home.id); reload({ editor: true });
+}
+function earlierHomesMenu() {
+  const kept = plans.earlierHomes().slice(0, 12);
+  if (!kept.length) return [];
+  return [{ label: 'Earlier Homes', submenu: [
+    ...kept.map(home => ({ label: `${home.name} · ${home.rooms} rooms, ${home.devices} devices · ${home.date.toLocaleString()}`, click: guarded(() => restoreEarlier(home)) })),
+    { type: 'separator' }, { label: 'Show in Explorer', click: () => shell.openPath(plans.earlierDirectory) },
+  ] }];
 }
 async function savePlan(config) { plans.save(config); reload(); return { ok: true, path: plans.file }; }
 async function importDialog(owner) {
@@ -139,6 +153,7 @@ function buildTray() {
     { label: 'Open House Control', click: () => show() },
     { label: 'Edit Home…', click: () => show('editor') },
     { label: 'Load Floor Plan…', click: guarded(loadPlan) },
+    ...earlierHomesMenu(),
     { label: 'Reveal Plan File', click: () => shell.showItemInFolder(plans.custom() ? plans.file : path.join(assetRoot, 'web/plans', `${plans.activePlan}.json`)) },
     { type: 'separator' },
     { label: 'Show Island', type: 'checkbox', checked: windows.has('island'), click: toggleIsland },
@@ -190,6 +205,13 @@ async function handle(message, win) {
       case 'selectPlan': plans.select(message.plan); reload({ editor: true }); return { ok: true };
       case 'loadPlan': await loadPlan(); return { ok: true };
       case 'revealPlan': shell.showItemInFolder(plans.file); return { ok: true };
+      case 'widgets': case 'haptic': return { ok: true }; // macOS/iOS widget snapshots and phone haptics: nothing to do here
+      case 'openSettings': await pairPhone(); return { ok: true }; // no separate settings window on Windows
+      case 'setOpenAtLogin': {
+        app.setLoginItemSettings({ openAtLogin: Boolean(message.on) });
+        notify('panel', 'openAtLogin', app.getLoginItemSettings().openAtLogin ? 'on' : 'off');
+        return { ok: true };
+      }
       case 'close': win.hide(); return { ok: true };
       case 'quit': app.quit(); return { ok: true };
     }

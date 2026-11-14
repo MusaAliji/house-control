@@ -78,3 +78,15 @@ internal class InfraredRemote(private val spacingMillis: Long = 1000) {
         }}
     }
 }
+
+/** A learned IR light switch: an explicit pair of Smart Life Tap-to-Run scenes, on/off only. */
+internal object SceneSwitch {
+    data class Command(val homeId:String,val sceneId:String,val on:Boolean)
+    fun command(link:JSONObject,patch:JSONObject):Command {
+        val pair=link.optJSONObject("sceneSwitch");val home=pair?.optString("homeId").orEmpty();val onScene=pair?.optString("on").orEmpty();val offScene=pair?.optString("off").orEmpty()
+        if(pair==null||home.isEmpty()||onScene.isEmpty()||offScene.isEmpty()||onScene==offScene||patch.opt("on") !is Boolean)throw DeviceFailure("Link separate Smart Life ON and OFF commands for this IR light")
+        if(patch.keys().asSequence().any{it!="on"})throw DeviceFailure("This IR light supports on/off only")
+        val on=patch.getBoolean("on")
+        return Command(home,if(on)onScene else offScene,on)
+    }
+}
