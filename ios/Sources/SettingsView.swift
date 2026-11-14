@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var confirmUnpair = false
     @State private var confirmSignOut = false
     @State private var newHome = false
+    @State private var restoring: PlanStore.Earlier?
 
     var body: some View {
         @Bindable var model = model
@@ -58,7 +59,7 @@ struct SettingsView: View {
         .presentationBackground(Theme.background)
         .presentationDragIndicator(.visible)
         .preferredColorScheme(.dark)
-        .sheet(isPresented: $newHome) { NewHomeView() }
+        .sheet(isPresented: $newHome) { NewHomeView().environment(model) }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
             do { try model.importPlan(from: try result.get()) }
             catch { problem = error.localizedDescription }
@@ -97,6 +98,16 @@ struct SettingsView: View {
                                 : "\(model.linkedDevices) linked to real devices")
                 }
                 .buttonStyle(RowButtonStyle())
+                #if ROOM_SCAN
+                RowDivider()
+                Button { model.openScan() } label: {
+                    linkRow(symbol: "cube.transparent.fill", tint: Theme.warm, title: "Scan with LiDAR", beta: true,
+                            detail: model.canScan ? "Walk through your home, pin lamps and ACs as you go"
+                                : "Needs an iPhone with a LiDAR camera")
+                }
+                .buttonStyle(RowButtonStyle())
+                .disabled(!model.canScan)
+                #endif
             }
             HStack(spacing: 10) {
                 Button { newHome = true } label: { Label("New home", systemImage: "plus") }
@@ -104,17 +115,46 @@ struct SettingsView: View {
                 Button { importing = true } label: { Label("Import file", systemImage: "square.and.arrow.down") }
                     .buttonStyle(SecondaryButtonStyle())
             }
+            if !model.earlierHomes.isEmpty { earlierMenu }
             if !model.hasCustomPlan {
                 footnote("Make your own home here, or pair with House Control on a Mac or PC and the one drawn there arrives by itself.")
             }
         }
+        .confirmationDialog("Bring back \(restoring?.name ?? "this home")?", isPresented: Binding(
+            get: { restoring != nil }, set: { if !$0 { restoring = nil } }), titleVisibility: .visible) {
+            Button("Bring back") { if let home = restoring { model.restoreEarlier(home) }; restoring = nil }
+        } message: {
+            Text(model.macName == nil
+                 ? "It becomes this iPhone's home again. The one here now is kept among the earlier homes."
+                 : "It becomes the home on this iPhone and on \(model.macName ?? "your computer"). The one here now is kept among the earlier homes.")
+        }
     }
 
-    private func linkRow(symbol: String, tint: Color, title: String, detail: String) -> some View {
+    /// The homes kept before a scan, the computer or a file replaced the one here.
+    private var earlierMenu: some View {
+        Menu {
+            ForEach(model.earlierHomes.prefix(12)) { home in
+                Button { restoring = home } label: {
+                    Text(home.name)
+                    Text("\(home.rooms) rooms, \(home.devices) devices · \(home.date.formatted(date: .abbreviated, time: .shortened))")
+                }
+            }
+        } label: {
+            Label("Earlier homes", systemImage: "clock.arrow.circlepath")
+        }
+        .buttonStyle(SecondaryButtonStyle())
+    }
+
+    private func linkRow(symbol: String, tint: Color, title: String, beta: Bool = false, detail: String) -> some View {
         HStack(spacing: 14) {
             IconBadge(symbol: symbol, tint: tint)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 16.5, weight: .semibold)).foregroundStyle(Theme.text)
+                HStack(spacing: 7) {
+                    Text(title).font(.system(size: 16.5, weight: .semibold)).foregroundStyle(Theme.text)
+                    #if ROOM_SCAN
+                    if beta { BetaBadge() }
+                    #endif
+                }
                 Text(detail).font(.system(size: 13.5)).foregroundStyle(Theme.muted).lineLimit(1)
             }
             Spacer(minLength: 8)

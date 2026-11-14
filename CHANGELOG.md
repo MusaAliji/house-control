@@ -3,6 +3,62 @@
 What changed in each release of House Control. The Mac app is on
 [Releases](https://github.com/0xProbabillity/house-control/releases); the iPhone app is on the App Store and TestFlight.
 
+## 1.5.2 — 2026-11-13
+
+### Fixes from TestFlight feedback
+
+- **iPhone Duo:** the buttons at the top (Save in the editor, the panel's top-right buttons) no longer sit under
+  the status bar in the screen's top corner, on the outer and the inner screen alike. The app asks the system which
+  corners are covered and keeps its buttons clear of them.
+- **The iPhone app on a Mac** no longer quits when a sheet opens (the welcome screen, Settings, New home and the
+  editor's connections).
+- The editor says how to turn a door or a window: drag it onto a wall that runs the other way.
+
+## 1.5.1 — in TestFlight (beta, testers on the team only)
+
+### Room buttons, and a home that cannot be lost
+
+- **On/off scenes.** Tick **On/off button** on a scene in the editor and it becomes a room button: a tap turns its
+  lights on, the next tap (while any of them is on) turns them off. It shows as on while its lights are lit, in the
+  panel, the island and the widgets.
+- **Earlier homes.** Before a scan, a file, the editor or a paired Mac or phone replaces the home, the one there is
+  kept. **Settings → Home → Earlier homes** on the iPhone and **Earlier Homes** in the Mac's menu bring one back,
+  on both devices.
+- Saving a scan in place of your home now says the old one is kept, and where.
+- **Learned IR lights** (a Smart Life DIY remote key) switch through their Smart Life ON and OFF Tap-to-Run scenes,
+  so they no longer fail with error 2008 on the iPhone.
+
+## 1.5.0 — in TestFlight
+
+### Scan your home with LiDAR
+
+- **Walk through the home with the iPhone's LiDAR camera** and House Control draws it: rooms, walls, doors,
+  windows and furniture, squared up and lined up with each other, ready in 3D. On iPhone Pro models, from
+  **New home** or **Settings → Scan with LiDAR**.
+- **One room at a time.** Tap **Next room** in the doorway; every room lands in the same plan. An L-shaped room
+  becomes two rooms open to each other, and two rooms scanned apart meet in the middle of the wall between them.
+- **Pin your lamps and air conditioners as you go.** Point the circle at one and tap +: a pin stays on it as you
+  walk, and a half-height list beside the camera offers the matching devices of Smart Life, Home Assistant, Hue and
+  Apple Home, or "link later". A lamp on the ceiling becomes a ceiling lamp, one at shoulder height a floor lamp; an
+  AC goes on its wall.
+- **See it before it is saved:** the plan from above, rooms to rename, pins to drop, and whether it becomes the
+  home or another floor of the home you have. **Save and fine-tune** opens the editor on it.
+- The phone keeps the screen awake while scanning, and finishes the scan itself if it gets too warm.
+
+## 1.4.0 — in TestFlight
+
+### Get to everything in the 3D model
+
+- **Turn the home all the way round** with one finger, and tilt it from nearly level with the floor to straight down.
+  The outer walls on your side sink out of the way as you go, whichever side that is.
+- **Two fingers move the home** up, down, left and right, and pinch to zoom, closer than before. What is under your
+  fingers stays under them.
+- **On the Mac:** drag to turn. Two fingers on the trackpad move the home and a pinch zooms; with a mouse the wheel
+  zooms, and the right or middle button or Shift-drag moves it.
+- **A button puts the view back.** It shows beside the model only while the view has been changed.
+- Your view stays where you left it: a room is framed from your angle, and leaving a room or a device returns to it.
+- The shadows redraw when the model stops moving, so turning it does not stutter.
+
 ## 1.3.0 — in TestFlight
 
 ### Homes on several floors

@@ -124,6 +124,14 @@ final class AppModel {
     var showNewHome = false
     private(set) var banner: Banner?
 
+    #if ROOM_SCAN
+    // Scanning the home with LiDAR (Scan/): the screen, the name the new home gets, and a
+    // scan read back from a file to review again (HOUSE_SCAN_FIXTURE).
+    var showScan = false
+    var scanName = "My home"
+    @ObservationIgnored var scanReplay: RoomScan?
+    #endif
+
     init() {
         let environment = ProcessInfo.processInfo.environment
         // HOUSE_DATA_DIR (SIMCTL_CHILD_HOUSE_DATA_DIR in the simulator) runs the app on a
@@ -197,9 +205,21 @@ final class AppModel {
         case "connections": showSettings = true
         case "welcome": showWelcome = true
         case "newhome": showNewHome = true
+        #if ROOM_SCAN
+        case "scan": showScan = true
+        #endif
         case "home": break
         default: showWelcome = !sandboxed && !UserDefaults.standard.bool(forKey: "welcomed")
         }
+        #if ROOM_SCAN
+        // HOUSE_SCAN_FIXTURE=<a saved scan, as JSON> opens the review of that scan.
+        if let path = environment["HOUSE_SCAN_FIXTURE"], let data = FileManager.default.contents(atPath: path),
+           let scan = try? JSONDecoder().decode(RoomScan.self, from: data) {
+            scanReplay = scan
+            showWelcome = false
+            showScan = true
+        }
+        #endif
     }
 
     // MARK: - Life cycle
@@ -309,6 +329,25 @@ final class AppModel {
         try plans.importPlan(from: url)
         reloadHome()
         show(Banner(symbol: "checkmark.circle.fill", text: "Floor plan imported", tint: Theme.green))
+    }
+
+    /// The homes kept before something replaced this phone's one (a scan, the Mac, a file).
+    var earlierHomes: [PlanStore.Earlier] {
+        _ = planVersion
+        return plans.earlierHomes()
+    }
+
+    /// Makes a kept home this phone's home again, and the paired computer's.
+    func restoreEarlier(_ home: PlanStore.Earlier) {
+        do {
+            let data = try plans.restore(home)
+            reloadHome()
+            sync.sendPlan(data)
+            Haptics.shared.play("success")
+            show(Banner(symbol: "clock.arrow.circlepath", text: "\(home.name) is back", tint: Theme.green))
+        } catch {
+            show(Banner(symbol: "exclamationmark.triangle.fill", text: "Could not bring this home back", tint: Theme.red))
+        }
     }
 
     func removeCustomPlan() {

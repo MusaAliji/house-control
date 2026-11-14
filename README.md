@@ -24,7 +24,8 @@ Windows companion: [build, editor, and Android pairing guide](docs/windows.md). 
 ## What it does
 
 - **Lives in the menu bar.** Click the house icon and a panel drops down; click anywhere else and it is gone.
-- **Your floor plan in 3D.** Rooms, walls, doors, windows and furniture are built from one JSON file.
+- **Your floor plan in 3D.** Rooms, walls, doors, windows and furniture are built from one JSON file. Turn it all the
+  way round and move it around: on the Mac drag to turn, two fingers on the trackpad to move, pinch to zoom.
   Lamps light the scene the way they light the room; an AC that is running blows visible air.
 - **Lights.** Tap to toggle, drag across a tile to dim, open a light for brightness, white temperature and colour.
 - **Air conditioners.** Power, target temperature, mode and fan speed, with the room temperature from a real sensor if you have one.
@@ -198,7 +199,7 @@ Details, every tool, and the privacy model: [docs/ai-access.md](docs/ai-access.m
 </p>
 
 The iPhone app is the panel made for a thumb: tap a lamp in the 3D view or its tile, drag across a tile to dim,
-touch and hold a light for brightness and colour, pinch the model to zoom, swipe in from the left edge to go back.
+touch and hold a light for brightness and colour, turn the model all the way round with one finger, move it and pinch to zoom with two, swipe in from the left edge to go back.
 
 It needs no Mac. Everything is set up on the phone, under **Settings** (the sliders button):
 
